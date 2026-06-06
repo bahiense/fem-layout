@@ -677,7 +677,7 @@ function monthPlanned(month){ return (S.planned||[]).filter(p=>p.month===month);
 function pendingExpenses(month){ return monthPlanned(month).filter(p=>p.type==='expense').reduce((s,p)=>s+p.amt,0); }
 function pendingIncome(month){ return monthPlanned(month).filter(p=>p.type==='income').reduce((s,p)=>s+p.amt,0); }
 function projectedBalance(month){
-  return monthIncome(month)+pendingIncome(month)-monthExpense(month)-pendingExpenses(month);
+  return totalBalance() + pendingIncome(month) - pendingExpenses(month);
 }
 
 /* ════════════════════════════════════════════════════════
@@ -750,7 +750,8 @@ function renderDash(){
 
   el.innerHTML=`
     <div class="hero">
-      <div class="hero-lbl">Saldo Total</div>
+      <div class="hero-lbl">Saldo Atual</div>
+      <div style="font-size:10px;color:var(--t2);margin-bottom:6px;font-weight:500">Somente transações confirmadas</div>
       <div class="hero-amt ${bal>=0?'pos':'neg'}">${brl(bal)}</div>
       <div class="hero-row">
         <div class="hstat">
@@ -799,24 +800,20 @@ function renderDash(){
       <div class="insight-txt">${insight.txt}</div>
     </div>
 
-    ${(inc>0||exp>0||pendList.length>0)?`
+    ${(pendList.length>0)?`
     <div class="proj">
-      <div class="proj-head">📊 Projeção — ${monthLabel(month)}</div>
+      <div class="proj-head">🔮 Saldo Previsto — ${monthLabel(month)}</div>
       <div class="proj-row">
-        <span class="proj-row-lbl">✅ Receitas confirmadas</span>
-        <span class="proj-row-val" style="color:var(--green)">+${brl(inc)}</span>
+        <span class="proj-row-lbl">💰 Saldo atual confirmado</span>
+        <span class="proj-row-val" style="color:${bal>=0?'var(--green)':'var(--red)'}">${brl(bal)}</span>
       </div>
-      <div class="proj-row">
-        <span class="proj-row-lbl">✅ Despesas realizadas</span>
-        <span class="proj-row-val" style="color:var(--red)">-${brl(exp)}</span>
-      </div>
-      ${pendExp>0?`<div class="proj-row">
-        <span class="proj-row-lbl">⏳ A pagar (${pendList.filter(p=>p.type==='expense').length} item${pendList.filter(p=>p.type==='expense').length!==1?'s':''})</span>
-        <span class="proj-row-val" style="color:rgba(244,63,94,.75)">-${brl(pendExp)}</span>
-      </div>`:''}
       ${pendInc>0?`<div class="proj-row">
-        <span class="proj-row-lbl">⏳ A receber</span>
-        <span class="proj-row-val" style="color:rgba(34,197,94,.75)">+${brl(pendInc)}</span>
+        <span class="proj-row-lbl">⏳ + A receber (${pendList.filter(p=>p.type==='income').length} item${pendList.filter(p=>p.type==='income').length!==1?'s':''})</span>
+        <span class="proj-row-val" style="color:rgba(34,197,94,.8)">+${brl(pendInc)}</span>
+      </div>`:''}
+      ${pendExp>0?`<div class="proj-row">
+        <span class="proj-row-lbl">⏳ − A pagar (${pendList.filter(p=>p.type==='expense').length} item${pendList.filter(p=>p.type==='expense').length!==1?'s':''})</span>
+        <span class="proj-row-val" style="color:rgba(244,63,94,.8)">-${brl(pendExp)}</span>
       </div>`:''}
       <div class="proj-result">
         <div>
@@ -827,13 +824,13 @@ function renderDash(){
         </div>
         <div style="text-align:right">
           <div class="proj-result-val" style="color:${projected>=0?'var(--green)':'var(--red)'}">${brl(projected)}</div>
-          ${projected<0?'<div style="font-size:10px;color:var(--red);margin-top:2px">⚠️ Saldo negativo previsto</div>':''}
+          ${projected<0?'<div style="font-size:10px;color:var(--red);margin-top:2px">⚠️ Vai faltar dinheiro</div>':''}
         </div>
       </div>
       <div style="margin-top:10px;display:flex;justify-content:flex-end">
         <span class="sh-link" onclick="showView('budget')">Gerenciar planejamento ›</span>
       </div>
-    </div>`:''}
+    </div>`:``}
 
     <div class="card">
       <div class="sh"><span class="sh-title">Gastos por Categoria</span><span class="sh-link" onclick="showView('budget')">Ver orçamento</span></div>
@@ -996,29 +993,25 @@ function renderBudget(){
 
     ${planned.map(p=>plannedItemHTML(p)).join('')}
 
-    ${(planned.length>0||(inc>0||exp>0))?`
+    ${planned.length>0?`
     <div class="proj" style="margin-top:6px">
-      <div class="proj-head">🔮 Resultado previsto — fim do mês</div>
+      <div class="proj-head">🔮 Saldo Previsto ao fim do mês</div>
       <div class="proj-row">
-        <span class="proj-row-lbl">✅ Receitas confirmadas</span>
-        <span class="proj-row-val" style="color:var(--green)">+${brl(inc)}</span>
-      </div>
-      <div class="proj-row">
-        <span class="proj-row-lbl">✅ Despesas realizadas</span>
-        <span class="proj-row-val" style="color:var(--red)">-${brl(exp)}</span>
+        <span class="proj-row-lbl">💰 Saldo atual (confirmado)</span>
+        <span class="proj-row-val" style="color:${totalBalance()>=0?'var(--green)':'var(--red)'}">${brl(totalBalance())}</span>
       </div>
       ${pendInc>0?`<div class="proj-row">
-        <span class="proj-row-lbl">⏳ A receber (${planned.filter(p=>p.type==='income').length} item${planned.filter(p=>p.type==='income').length!==1?'s':''})</span>
+        <span class="proj-row-lbl">⏳ + A receber</span>
         <span class="proj-row-val" style="color:rgba(34,197,94,.8)">+${brl(pendInc)}</span>
       </div>`:''}
       ${pendExp>0?`<div class="proj-row">
-        <span class="proj-row-lbl">⏳ A pagar (${planned.filter(p=>p.type==='expense').length} item${planned.filter(p=>p.type==='expense').length!==1?'s':''})</span>
+        <span class="proj-row-lbl">⏳ − A pagar</span>
         <span class="proj-row-val" style="color:rgba(244,63,94,.8)">-${brl(pendExp)}</span>
       </div>`:''}
       <div class="proj-result">
         <div>
-          <div class="proj-result-lbl">Saldo previsto ao fim do mês</div>
-          ${projected<0?'<div style="font-size:10px;color:var(--red);margin-top:3px">⚠️ Reveja seus lançamentos</div>':projected>0&&(inc+pendInc)>0?`<div style="font-size:10px;color:var(--t2);margin-top:3px">${Math.round(projected/(inc+pendInc)*100)}% da renda livre</div>`:''}
+          <div class="proj-result-lbl">Saldo previsto</div>
+          ${projected<0?'<div style="font-size:10px;color:var(--red);margin-top:3px">⚠️ Vai faltar dinheiro</div>':'<div style="font-size:10px;color:var(--t2);margin-top:3px">Se tudo for pago/recebido</div>'}
         </div>
         <div class="proj-result-val" style="color:${projected>=0?'var(--green)':'var(--red)'}">${brl(projected)}</div>
       </div>
