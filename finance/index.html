@@ -305,6 +305,31 @@ body{font-family:'Inter',-apple-system,sans-serif;color:var(--text);overscroll-b
 .proj-pct-bar{height:4px;background:var(--s3);border-radius:100px;overflow:hidden;margin-top:6px;width:80px;}
 .proj-pct-fill{height:100%;border-radius:100px;transition:width .6s var(--ease);}
 
+/* ── Today vs End-of-Month Compare ─────────────────────── */
+.cmp-card{background:linear-gradient(135deg,rgba(124,90,246,.08),rgba(59,130,246,.05));border:1px solid rgba(124,90,246,.2);border-radius:var(--r);padding:16px 18px;margin-bottom:10px;}
+.cmp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.cmp-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--t2);}
+.cmp-cols{display:grid;grid-template-columns:1fr 28px 1fr;align-items:center;gap:6px;margin-bottom:12px;}
+.cmp-col{}
+.cmp-col.right{text-align:right;}
+.cmp-col-lbl{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--t3);margin-bottom:3px;}
+.cmp-col-val{font-size:20px;font-weight:900;letter-spacing:-.5px;line-height:1;}
+.cmp-col-sub{font-size:10px;font-weight:600;margin-top:4px;}
+.cmp-arrow{text-align:center;color:var(--t3);font-size:18px;font-weight:300;}
+.cmp-delta{display:inline-flex;align-items:center;padding:2px 8px;border-radius:100px;font-size:10px;font-weight:800;}
+.cmp-delta.pos{background:var(--gbg);color:var(--green);}
+.cmp-delta.neg{background:var(--rbg);color:var(--red);}
+.cmp-delta.neutral{background:var(--s3);color:var(--t2);}
+.cmp-sep{height:1px;background:var(--border);margin:10px 0 8px;}
+.cmp-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;}
+.cmp-row-lbl{font-size:12px;color:var(--t2);}
+.cmp-row-val{font-size:12px;font-weight:800;}
+.cmp-items-hdr{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--t3);margin:10px 0 6px;}
+.cmp-empty{text-align:center;padding:10px 0 4px;}
+.cmp-empty-ico{font-size:26px;margin-bottom:5px;}
+.cmp-empty-txt{font-size:12px;color:var(--t2);}
+.cmp-empty-hint{font-size:11px;color:var(--t3);margin-top:3px;}
+
 /* ── Planned Item ───────────────────────────────────────── */
 .pli{display:flex;align-items:center;gap:10px;padding:11px 12px;background:var(--s1);border:1px solid var(--border);border-radius:var(--rsm);margin-bottom:5px;position:relative;overflow:hidden;}
 .pli::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px;}
@@ -698,7 +723,7 @@ function projectedBalance(month){
    INSIGHTS
 ════════════════════════════════════════════════════════ */
 function buildInsight(){
-  const month = curMonth;
+  const month = todayStr().slice(0,7);
   const inc = monthIncome(month);
   const exp = monthExpense(month);
   const rate = savingsRate(month);
@@ -748,19 +773,25 @@ function renderDate(){
 ════════════════════════════════════════════════════════ */
 function renderDash(){
   const el=document.getElementById('vw-dashboard');
-  const month=curMonth;
+  const realMonth=todayStr().slice(0,7); // sempre o mês real, não o navegável
   const bal=totalBalance();
-  const inc=monthIncome(month);
-  const exp=monthExpense(month);
-  const rate=savingsRate(month);
+  const inc=monthIncome(realMonth);
+  const exp=monthExpense(realMonth);
+  const rate=savingsRate(realMonth);
   const insight=buildInsight();
   const todayExp=todayExpense();
-  const recent=S.txs.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)).slice(0,6);
-  const pendExp=pendingExpenses(month);
-  const pendInc=pendingIncome(month);
-  const projected=projectedBalance(month);
-  const pendList=monthPlanned(month);
-  const projPct=inc>0?Math.max(0,Math.min(100,Math.round(projected/(inc+pendInc)*100))):0;
+  const recent=S.txs.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)).slice(0,5);
+
+  // Lançamentos futuros do mês atual, ordenados por data
+  const pendList=(S.planned||[]).filter(p=>p.month===realMonth).slice().sort((a,b)=>{
+    const da=a.date||(a.month+'-'+String(a.day||15).padStart(2,'0'));
+    const db=b.date||(b.month+'-'+String(b.day||15).padStart(2,'0'));
+    return da.localeCompare(db);
+  });
+  const pendExp=pendList.filter(p=>p.type==='expense').reduce((s,p)=>s+p.amt,0);
+  const pendInc=pendList.filter(p=>p.type==='income').reduce((s,p)=>s+p.amt,0);
+  const projected=bal+pendInc-pendExp;
+  const diff=projected-bal;
 
   el.innerHTML=`
     <div class="hero">
@@ -785,6 +816,45 @@ function renderDash(){
       </div>
     </div>
 
+    <!-- Card Hoje → Fim do Mês: sempre visível -->
+    <div class="cmp-card">
+      <div class="cmp-header">
+        <div class="cmp-title">🔮 Projeção — ${monthLabel(realMonth)}</div>
+        <span class="sh-link" onclick="showView('budget')">Gerenciar ›</span>
+      </div>
+      <div class="cmp-cols">
+        <div class="cmp-col">
+          <div class="cmp-col-lbl">Hoje</div>
+          <div class="cmp-col-val" style="color:${bal>=0?'var(--text)':'var(--red)'}">${brl(bal)}</div>
+          <div class="cmp-col-sub" style="color:var(--t2)">confirmado</div>
+        </div>
+        <div class="cmp-arrow">›</div>
+        <div class="cmp-col right">
+          <div class="cmp-col-lbl">Fim do mês</div>
+          <div class="cmp-col-val" style="color:${projected>=0?'var(--green)':'var(--red)'}">${brl(projected)}</div>
+          <div class="cmp-col-sub">${pendList.length>0
+            ?`<span class="cmp-delta ${diff>0?'pos':diff<0?'neg':'neutral'}">${diff>0?'↑ sobram':diff<0?'↓ faltam':'= igual'} ${brl(Math.abs(diff))}</span>`
+            :`<span class="cmp-delta neutral">sem pendências</span>`
+          }</div>
+        </div>
+      </div>
+
+      ${pendList.length>0?`
+        <div class="cmp-sep"></div>
+        ${pendInc>0?`<div class="cmp-row"><span class="cmp-row-lbl">⏳ A receber (${pendList.filter(p=>p.type==='income').length})</span><span class="cmp-row-val" style="color:rgba(34,197,94,.85)">+${brl(pendInc)}</span></div>`:''}
+        ${pendExp>0?`<div class="cmp-row"><span class="cmp-row-lbl">⏳ A pagar (${pendList.filter(p=>p.type==='expense').length})</span><span class="cmp-row-val" style="color:rgba(244,63,94,.85)">-${brl(pendExp)}</span></div>`:''}
+        <div class="cmp-items-hdr">Próximos lançamentos</div>
+        ${pendList.map(p=>plannedItemHTML(p)).join('')}
+      `:`
+        <div class="cmp-sep"></div>
+        <div class="cmp-empty">
+          <div class="cmp-empty-ico">📋</div>
+          <div class="cmp-empty-txt">Nenhum lançamento futuro</div>
+          <div class="cmp-empty-hint">Use o <strong>+</strong> com uma data futura para planejar</div>
+        </div>
+      `}
+    </div>
+
     <div class="qstats">
       <div class="qs">
         <div class="qs-val" style="color:${rate>=20?'var(--green)':'var(--yellow)'}">${rate}%</div>
@@ -795,7 +865,7 @@ function renderDash(){
         <div class="qs-lbl">Resultado</div>
       </div>
       <div class="qs">
-        <div class="qs-val">${S.txs.filter(t=>t.date.startsWith(month)).length}</div>
+        <div class="qs-val">${S.txs.filter(t=>t.date.startsWith(realMonth)).length}</div>
         <div class="qs-lbl">Transações</div>
       </div>
     </div>
@@ -814,38 +884,6 @@ function renderDash(){
       <div class="insight-txt">${insight.txt}</div>
     </div>
 
-    ${(pendList.length>0)?`
-    <div class="proj">
-      <div class="proj-head">🔮 Saldo Previsto — ${monthLabel(month)}</div>
-      <div class="proj-row">
-        <span class="proj-row-lbl">💰 Saldo atual confirmado</span>
-        <span class="proj-row-val" style="color:${bal>=0?'var(--green)':'var(--red)'}">${brl(bal)}</span>
-      </div>
-      ${pendInc>0?`<div class="proj-row">
-        <span class="proj-row-lbl">⏳ + A receber (${pendList.filter(p=>p.type==='income').length} item${pendList.filter(p=>p.type==='income').length!==1?'s':''})</span>
-        <span class="proj-row-val" style="color:rgba(34,197,94,.8)">+${brl(pendInc)}</span>
-      </div>`:''}
-      ${pendExp>0?`<div class="proj-row">
-        <span class="proj-row-lbl">⏳ − A pagar (${pendList.filter(p=>p.type==='expense').length} item${pendList.filter(p=>p.type==='expense').length!==1?'s':''})</span>
-        <span class="proj-row-val" style="color:rgba(244,63,94,.8)">-${brl(pendExp)}</span>
-      </div>`:''}
-      <div class="proj-result">
-        <div>
-          <div class="proj-result-lbl">Saldo previsto ao fim do mês</div>
-          ${(inc+pendInc)>0?`
-          <div class="proj-pct-bar"><div class="proj-pct-fill ${projPct<30?'over':projPct<60?'warn':'ok'}" style="width:${projPct}%"></div></div>
-          <div style="font-size:10px;color:var(--t2);margin-top:3px">${projPct}% da renda disponível</div>`:''}
-        </div>
-        <div style="text-align:right">
-          <div class="proj-result-val" style="color:${projected>=0?'var(--green)':'var(--red)'}">${brl(projected)}</div>
-          ${projected<0?'<div style="font-size:10px;color:var(--red);margin-top:2px">⚠️ Vai faltar dinheiro</div>':''}
-        </div>
-      </div>
-      <div style="margin-top:10px;display:flex;justify-content:flex-end">
-        <span class="sh-link" onclick="showView('budget')">Gerenciar planejamento ›</span>
-      </div>
-    </div>`:``}
-
     <div class="card">
       <div class="sh"><span class="sh-title">Gastos por Categoria</span><span class="sh-link" onclick="showView('budget')">Ver orçamento</span></div>
       <div class="chart-wrap"><canvas id="donutChart"></canvas></div>
@@ -857,8 +895,7 @@ function renderDash(){
     ${recent.map(t=>txItemHTML(t)).join('')}
   `;
 
-  // Donut chart
-  requestAnimationFrame(()=>buildDonut(month));
+  requestAnimationFrame(()=>buildDonut(realMonth));
 }
 
 function buildDonut(month){
