@@ -682,7 +682,6 @@ function ordem(pg, hdr, prayer){
   const sentences = prayer.text.split(/(?<=[.!?])\s+/).slice(0,3);
   const target = sentences[Math.floor(Math.random()*sentences.length)].replace(/[.!?,;]/g,'').trim();
   const words = shuffleArr(target.split(' ').filter(w=>w.length>0));
-  const wordsCopy = [...words];
 
   pg.innerHTML = hdr + `
 <div class="exhdr">
@@ -691,29 +690,37 @@ function ordem(pg, hdr, prayer){
   <div class="extip">Toque nas palavras na ordem correta</div>
 </div>
 <div class="psrc" style="text-align:left;margin-bottom:8px">— ${prayer.src}</div>
-<div class="azone" id="azone">${wordsCopy.map((w,i)=>`<div class="wc" onclick="removeWord(${i})" id="aw${i}" style="display:none">${w}</div>`).join('')}</div>
+<div class="azone" id="azone" style="min-height:48px"></div>
 <div class="wbank" id="wbank">${words.map((w,i)=>`<div class="wc" onclick="pickWord(${i},this)" id="ww${i}">${w}</div>`).join('')}</div>
 <div id="ordFb"></div>
 <button class="btn btn-p" onclick="checkOrdem(${JSON.stringify(target.split(' '))},${prayer.id})" style="margin-top:10px">Verificar</button>`;
-  window._ordWords = []; window._origWords = target.split(' ').map(w=>w.replace(/[.,!?;:]/g,''));
+  window._ordWords = []; window._ordWordIds = [];
 }
 
 function pickWord(idx, el){
   if(el.classList.contains('sel')) return;
   el.classList.add('sel');
-  window._ordWords.push(document.getElementById('ww'+idx).textContent);
-  document.getElementById('aw'+idx).style.display='';
+  const word = el.textContent;
+  window._ordWords.push(word);
+  window._ordWordIds.push(idx);
+  const div = document.createElement('div');
+  div.className = 'wc sel';
+  div.textContent = word;
+  div.dataset.idx = idx;
+  div.onclick = function(){ removeWord(idx, this); };
+  document.getElementById('azone').appendChild(div);
 }
-function removeWord(idx){
-  const aw = document.getElementById('aw'+idx);
+
+function removeWord(idx, azoneEl){
   const ww = document.getElementById('ww'+idx);
-  if(aw) aw.style.display='none';
   if(ww) ww.classList.remove('sel');
-  window._ordWords = window._ordWords.filter((_,i)=>i!==window._ordWords.lastIndexOf(aw.textContent));
+  if(azoneEl && azoneEl.parentNode) azoneEl.parentNode.removeChild(azoneEl);
+  const pos = window._ordWordIds.lastIndexOf(idx);
+  if(pos !== -1){ window._ordWords.splice(pos,1); window._ordWordIds.splice(pos,1); }
 }
 
 function checkOrdem(target, prayerId){
-  const given = Array.from(document.getElementById('azone').querySelectorAll('.wc')).filter(el=>el.style.display!=='none').map(el=>el.textContent.toLowerCase().replace(/[.,!?;:]/g,''));
+  const given = window._ordWords.map(w=>w.toLowerCase().replace(/[.,!?;:]/g,''));
   const tgt = target.map(w=>w.toLowerCase().replace(/[.,!?;:]/g,''));
   const correct = given.length===tgt.length && given.every((w,i)=>w===tgt[i]||levenshtein(w,tgt[i])<=1);
   recordResult(prayerId, correct);
