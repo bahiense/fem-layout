@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Oratio — Aprenda a Orar</title>
+<style>
+:root{--p:#1a237e;--pl:#283593;--a:#ffd700;--al:#fff176;--bg:#0d1117;--s:#161b22;--s2:#21262d;--t:#e6edf3;--tm:#8b949e;--ok:#56d364;--err:#f85149;--warn:#e3b341;--bd:#30363d;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--t);min-height:100vh;overflow-x:hidden;}
+#app{max-width:768px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;}
+.hdr{background:linear-gradient(135deg,var(--p) 0%,#4a148c 100%);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+.hdr-logo{font-size:20px;font-weight:700;color:var(--a);letter-spacing:1px;}
+.hdr-stats{display:flex;gap:12px;align-items:center;}
+.spill{display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.12);border-radius:20px;padding:5px 12px;font-size:14px;font-weight:600;}
+.spill span{color:var(--a);}
+.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:768px;background:var(--s);border-top:1px solid var(--bd);display:flex;z-index:100;}
+.ni{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 8px;cursor:pointer;color:var(--tm);transition:color .2s;font-size:11px;gap:3px;}
+.ni.on{color:var(--a);}
+.ni svg{width:22px;height:22px;}
+.pg{flex:1;padding:20px 16px 86px;display:none;}
+.pg.on{display:block;}
+.card{background:var(--s);border:1px solid var(--bd);border-radius:16px;padding:20px;margin-bottom:14px;}
+.ct{font-size:17px;font-weight:700;margin-bottom:6px;color:var(--a);}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 22px;border-radius:12px;border:none;cursor:pointer;font-size:15px;font-weight:600;transition:all .2s;width:100%;}
+.btn-p{background:linear-gradient(135deg,var(--a),#ff8f00);color:#111;}
+.btn-p:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(255,215,0,.3);}
+.btn-s{background:var(--s2);color:var(--t);border:1px solid var(--bd);}
+.btn-sm{width:auto;padding:8px 16px;font-size:13px;}
+.pb{height:8px;background:var(--s2);border-radius:4px;overflow:hidden;margin:8px 0;}
+.pf{height:100%;background:linear-gradient(90deg,var(--a),#ff8f00);border-radius:4px;transition:width .5s ease;}
+.ptxt{font-size:17px;line-height:1.85;background:var(--s2);padding:18px;border-radius:12px;text-align:left;margin:14px 0;font-style:italic;border-left:4px solid var(--a);}
+.psrc{color:var(--a);font-size:12px;text-align:right;margin-top:6px;}
+.blank{display:inline-block;border:none;border-bottom:3px solid var(--a);background:transparent;color:var(--a);font-size:17px;font-style:italic;min-width:70px;text-align:center;outline:none;padding:1px 4px;}
+.blank:focus{background:rgba(255,215,0,.1);border-radius:4px 4px 0 0;}
+.wbank{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:14px 0;}
+.wc{padding:7px 14px;background:var(--pl);color:var(--t);border:2px solid var(--p);border-radius:20px;cursor:pointer;font-size:14px;transition:all .2s;user-select:none;}
+.wc:hover{border-color:var(--a);color:var(--a);}
+.wc.sel{opacity:.35;cursor:default;}
+.wc.ok2{background:rgba(86,211,100,.2);border-color:var(--ok);color:var(--ok);}
+.wc.bad{background:rgba(248,81,73,.2);border-color:var(--err);color:var(--err);}
+.azone{min-height:72px;background:var(--s2);border:2px dashed var(--bd);border-radius:12px;padding:10px;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start;margin:14px 0;}
+.azone .wc{background:rgba(26,35,126,.5);cursor:pointer;}
+.cg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0;}
+.cb{padding:14px;background:var(--s2);border:2px solid var(--bd);border-radius:12px;cursor:pointer;font-size:14px;color:var(--t);text-align:center;transition:all .2s;line-height:1.4;}
+.cb:hover{border-color:var(--a);}
+.cb.ok2{background:rgba(86,211,100,.15);border-color:var(--ok);color:var(--ok);}
+.cb.bad{background:rgba(248,81,73,.15);border-color:var(--err);color:var(--err);}
+.fc{perspective:1000px;height:260px;cursor:pointer;margin:18px 0;}
+.fci{position:relative;width:100%;height:100%;transition:transform .6s;transform-style:preserve-3d;}
+.fc.flip .fci{transform:rotateY(180deg);}
+.fcf,.fcb{position:absolute;width:100%;height:100%;backface-visibility:hidden;background:linear-gradient(135deg,var(--p),#4a148c);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:22px;border:1px solid rgba(255,215,0,.3);}
+.fcb{transform:rotateY(180deg);}
+.fcl{font-size:11px;color:rgba(255,215,0,.6);text-transform:uppercase;letter-spacing:2px;margin-bottom:10px;}
+.fcc{font-size:18px;font-weight:700;color:var(--t);text-align:center;line-height:1.4;}
+.fcs{font-size:13px;color:var(--tm);margin-top:10px;font-style:italic;}
+.rb{display:flex;gap:8px;margin:14px 0;}
+.rbtn{flex:1;padding:11px;border:none;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;transition:all .2s;}
+.ta{width:100%;min-height:110px;background:var(--s2);border:2px solid var(--bd);border-radius:12px;padding:14px;font-size:15px;color:var(--t);font-family:inherit;resize:none;outline:none;line-height:1.6;transition:border-color .2s;}
+.ta:focus{border-color:var(--a);}
+.timer{font-size:48px;font-weight:700;color:var(--a);text-align:center;font-variant-numeric:tabular-nums;margin:14px 0;}
+.timer.red{color:var(--err);animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.5;}}
+.catg{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.catc{background:var(--s);border:1px solid var(--bd);border-radius:14px;padding:18px 14px;cursor:pointer;transition:all .2s;text-align:center;}
+.catc:hover{border-color:var(--a);transform:translateY(-2px);}
+.catic{font-size:30px;margin-bottom:6px;}
+.catn{font-weight:600;font-size:13px;}
+.catk{color:var(--tm);font-size:11px;margin-top:3px;}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}
+.sc{background:var(--s);border:1px solid var(--bd);border-radius:14px;padding:18px;text-align:center;}
+.sn{font-size:30px;font-weight:700;color:var(--a);}
+.sl{font-size:11px;color:var(--tm);margin-top:3px;text-transform:uppercase;letter-spacing:.5px;}
+.dcal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin:10px 0;}
+.dd{aspect-ratio:1;border-radius:3px;background:var(--s2);}
+.dd.done{background:var(--a);}
+.dd.part{background:#b8860b;}
+.toast{position:fixed;top:75px;left:50%;transform:translateX(-50%) translateY(-100px);background:var(--s);border:1px solid var(--bd);border-radius:12px;padding:11px 22px;font-weight:600;z-index:1000;transition:transform .4s cubic-bezier(.175,.885,.32,1.275);white-space:nowrap;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.ok{border-color:var(--ok);color:var(--ok);}
+.toast.bad{border-color:var(--err);color:var(--err);}
+.pli{background:var(--s);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:9px;cursor:pointer;transition:border-color .2s;}
+.pli:hover{border-color:var(--a);}
+.plt{font-weight:600;margin-bottom:3px;}
+.plp{color:var(--tm);font-size:12px;line-height:1.4;}
+.plm{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap;}
+.tag{font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(255,215,0,.15);color:var(--a);}
+.diffbar{display:flex;gap:3px;margin-top:5px;}
+.star{font-size:10px;color:var(--bd);}
+.star.on{color:var(--a);}
+.exhdr{text-align:center;margin-bottom:18px;}
+.extype{font-size:12px;color:var(--tm);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}
+.extit{font-size:20px;font-weight:700;}
+.extip{font-size:13px;color:var(--tm);margin-top:6px;}
+.complete{text-align:center;padding:40px 20px;}
+.cmp-ico{font-size:68px;margin-bottom:14px;}
+.cmp-t{font-size:26px;font-weight:700;color:var(--a);}
+.cmp-s{color:var(--tm);margin:6px 0 22px;font-size:15px;}
+.xpp{position:fixed;color:var(--a);font-weight:700;font-size:18px;pointer-events:none;animation:xpf 1.5s ease-out forwards;z-index:999;}
+@keyframes xpf{0%{opacity:1;transform:translateY(0);}100%{opacity:0;transform:translateY(-45px);}}
+.prog-bar-row{margin-bottom:10px;}
+.prog-lbl{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;}
+.prog-lbl span{color:var(--tm);}
+.hint-btn{background:none;border:1px solid var(--bd);color:var(--tm);border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;margin-bottom:10px;}
+.hint-btn:hover{border-color:var(--a);color:var(--a);}
+.feedback-box{border-radius:12px;padding:16px;margin:12px 0;text-align:left;font-size:14px;line-height:1.7;}
+.feedback-box.ok{background:rgba(86,211,100,.1);border:1px solid var(--ok);}
+.feedback-box.bad{background:rgba(248,81,73,.1);border:1px solid var(--err);}
+.type-diff span.ok2{color:var(--ok);}
+.type-diff span.bad{color:var(--err);text-decoration:line-through;}
+.type-diff span.mis{color:var(--warn);font-style:italic;}
+.lv-badge{display:inline-block;background:linear-gradient(135deg,var(--a),#ff8f00);color:#111;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700;margin-left:8px;}
+.pub-box{background:linear-gradient(135deg,#1a237e,#4a148c);border-radius:16px;padding:22px;text-align:center;border:1px solid rgba(255,215,0,.2);}
+.pub-timer{font-size:56px;font-weight:700;color:#fff;margin:16px 0;}
+.pub-txt{font-size:16px;line-height:1.8;color:#e8d5ff;font-style:italic;text-align:left;background:rgba(255,255,255,.08);border-radius:10px;padding:16px;margin:14px 0;}
+.streak-fire{font-size:48px;margin-bottom:8px;}
+.daily-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.daily-pct{font-size:28px;font-weight:700;color:var(--a);}
+.ex-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.ex-card{background:var(--s);border:1px solid var(--bd);border-radius:14px;padding:16px;cursor:pointer;transition:all .2s;text-align:center;}
+.ex-card:hover{border-color:var(--a);transform:translateY(-2px);}
+.ex-ico{font-size:28px;margin-bottom:6px;}
+.ex-nm{font-weight:600;font-size:13px;}
+.ex-ds{color:var(--tm);font-size:11px;margin-top:3px;}
+.sep{height:1px;background:var(--bd);margin:16px 0;}
+.badge-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+.badge{background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:8px 14px;font-size:12px;text-align:center;}
+.badge.earned{background:rgba(255,215,0,.1);border-color:var(--a);color:var(--a);}
+.back-btn{background:none;border:none;color:var(--tm);cursor:pointer;font-size:14px;display:flex;align-items:center;gap:6px;margin-bottom:16px;padding:0;}
+.back-btn:hover{color:var(--t);}
+select{background:var(--s2);border:1px solid var(--bd);color:var(--t);border-radius:8px;padding:8px 12px;font-size:14px;outline:none;cursor:pointer;}
+select:focus{border-color:var(--a);}
+@media(max-width:480px){.catg,.ex-grid{grid-template-columns:1fr 1fr;}.cg{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="hdr">
+    <div class="hdr-logo">✝ Oratio</div>
+    <div class="hdr-stats">
+      <div class="spill">🔥 <span id="hStreak">0</span></div>
+      <div class="spill">⚡ <span id="hXP">0</span></div>
+    </div>
+  </div>
+  <div id="pgHome" class="pg on"></div>
+  <div id="pgEx" class="pg"></div>
+  <div id="pgProg" class="pg"></div>
+  <div id="pgLib" class="pg"></div>
+  <nav class="nav">
+    <div class="ni on" data-pg="Home" onclick="nav('Home')">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      Início
+    </div>
+    <div class="ni" data-pg="Ex" onclick="nav('Ex')">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      Exercícios
+    </div>
+    <div class="ni" data-pg="Prog" onclick="nav('Prog')">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      Progresso
+    </div>
+    <div class="ni" data-pg="Lib" onclick="nav('Lib')">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+      Biblioteca
+    </div>
+  </nav>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+// ═══════════════════════════════════════════════════
+// BANCO DE ORAÇÕES
+// ═══════════════════════════════════════════════════
+const CATS = {
+  grandes_oracoes:{label:'Grandes Orações Bíblicas',icon:'📖'},
+  manha:{label:'Orações da Manhã',icon:'🌅'},
+  noite:{label:'Orações da Noite',icon:'🌙'},
+  familia:{label:'Pela Família',icon:'👨‍👩‍👧‍👦'},
+  enfermos:{label:'Por Enfermos e Cura',icon:'💊'},
+  trabalho:{label:'Trabalho e Provisão',icon:'💼'},
+  protecao:{label:'Proteção Espiritual',icon:'🛡️'},
+  louvor:{label:'Louvor e Adoração',icon:'🙌'},
+  gratidao:{label:'Gratidão',icon:'🙏'},
+  forca:{label:'Força e Coragem',icon:'💪'},
+  sabedoria:{label:'Sabedoria e Guia',icon:'🌟'},
+  consagracao:{label:'Consagração e Rendição',icon:'✝️'},
+  penitencia:{label:'Arrependimento e Perdão',icon:'❤️'},
+  orar_publico:{label:'Orar em Público',icon:'🎤'},
+  intercecao:{label:'Intercessão',icon:'⚡'},
+  paz:{label:'Paz Interior',icon:'☮️'},
+  anseio:{label:'Busca de Deus',icon:'🔥'},
+};
+
+const PRAYERS = [
+{id:1,title:'Pai Nosso',text:'Pai nosso que estás nos céus, santificado seja o teu nome. Venha o teu reino, seja feita a tua vontade, assim na terra como no céu. O pão nosso de cada dia nos dá hoje. E perdoa-nos as nossas dívidas, assim como nós perdoamos aos nossos devedores. E não nos deixes cair em tentação, mas livra-nos do mal. Pois teu é o reino, o poder e a glória para sempre. Amém.',cat:'grandes_oracoes',src:'Mateus 6:9-13',dif:2,tags:['jesus','modelo','fundamental']},
+{id:2,title:'O Senhor é o Meu Pastor (Salmo 23)',text:'O Senhor é o meu pastor e nada me faltará. Ele me faz repousar em pastos verdejantes. Leva-me para junto das águas tranquilas. Restaura a minha alma. Guia-me pelas veredas da justiça por amor do seu nome. Mesmo que eu ande pelo vale da sombra da morte, não temerei mal algum, porque tu estás comigo. O teu cajado e o teu báculo me consolam. Prepara uma mesa diante de mim na presença dos meus inimigos. Unges a minha cabeça com óleo. O meu cálice transborda. Bondade e misericórdia me seguirão todos os dias da minha vida. E habitarei na casa do Senhor para sempre.',cat:'forca',src:'Salmo 23',dif:3,tags:['salmo','pastor','confiança']},
+{id:3,title:'Proteção do Altíssimo (Salmo 91)',text:'Aquele que habita no esconderijo do Altíssimo, e descansa à sombra do Onipotente, diz ao Senhor: Tu és o meu refúgio e o meu castelo. O meu Deus em quem confio. Ele te livrará do laço do passarinheiro e da peste perniciosa. Ele te cobrirá com as suas penas e sob as suas asas te confiarás. A sua verdade é escudo e broquel. Não temerás o terror de noite, nem a seta que voa de dia, porque ordenou aos seus anjos que te guardassem em todos os teus caminhos.',cat:'protecao',src:'Salmo 91',dif:4,tags:['salmo','anjos','segurança']},
+{id:4,title:'Deus é o Nosso Refúgio (Salmo 46)',text:'Deus é o nosso refúgio e a nossa força, socorro bem presente nas tribulações. Por isso não temeremos, ainda que a terra se transtorne e os montes sejam removidos para o meio do mar. Ainda que as suas águas rujam e se perturbem, e os montes tremam à fúria das suas ondas. O Senhor dos Exércitos está conosco. O Deus de Jacó é o nosso alto refúgio.',cat:'protecao',src:'Salmo 46:1-3,7',dif:2,tags:['salmo','força','refúgio']},
+{id:5,title:'O Senhor é a Minha Luz (Salmo 27)',text:'O Senhor é a minha luz e a minha salvação. A quem temerei? O Senhor é a força da minha vida. De quem me recearei? Quando os maus se aproximaram de mim para comer a minha carne, foram eles mesmos que tropeçaram e caíram. Ainda que um exército se acampasse contra mim, o meu coração não temeria. Numa coisa tenho pedido ao Senhor e a buscarei: que eu habite na casa do Senhor todos os dias da minha vida.',cat:'forca',src:'Salmo 27:1-4',dif:3,tags:['salmo','coragem','luz']},
+{id:6,title:'Magnificat — Oração de Maria',text:'A minha alma engrandece ao Senhor e o meu espírito se alegrou em Deus, meu Salvador. Porque atentou para a humildade da sua serva. Pois eis que desde agora todas as gerações me chamarão bem-aventurada. Porque o Todo-Poderoso me fez grandes coisas. Santo é o seu nome. A sua misericórdia vai de geração em geração sobre os que o temem. Dispersou os soberbos no pensamento do seu coração.',cat:'grandes_oracoes',src:'Lucas 1:46-51',dif:3,tags:['maria','louvor','alegria']},
+{id:7,title:'Oração Sacerdotal de Jesus',text:'Pai, chegou a hora. Glorifica o teu Filho, para que o teu Filho te glorifique. Assim como lhe deste autoridade sobre toda a carne, para que dê a vida eterna a todos os que lhe deste. E a vida eterna é esta: que te conheçam a ti, o único Deus verdadeiro, e a Jesus Cristo, a quem enviaste. Eu te glorifiquei na terra. Acabei a obra que me deste para fazer.',cat:'grandes_oracoes',src:'João 17:1-4',dif:4,tags:['jesus','glorificação','missão']},
+{id:8,title:'Força Interior — Paulo aos Efésios',text:'Dobro os meus joelhos perante o Pai de nosso Senhor Jesus Cristo. Para que vos conceda, segundo as riquezas da sua glória, que sejais fortalecidos com poder pelo seu Espírito no homem interior. Para que Cristo habite pela fé em vossos corações. A fim de que, sendo arraigados e fundados em amor, possais compreender com todos os santos qual é a largura, o comprimento, a altura e a profundidade do amor de Cristo.',cat:'forca',src:'Efésios 3:14-19',dif:4,tags:['paulo','força','amor']},
+{id:9,title:'A Paz de Deus',text:'Não andeis ansiosos por coisa alguma. Em tudo, porém, sejam conhecidas, diante de Deus, as vossas petições, pela oração e pela súplica, com ação de graças. E a paz de Deus, que excede todo o entendimento, guardará os vossos corações e os vossos pensamentos em Cristo Jesus.',cat:'paz',src:'Filipenses 4:6-7',dif:2,tags:['paulo','paz','ansiedade']},
+{id:10,title:'Oração de Salomão — Dedicação do Templo',text:'Senhor, Deus de Israel, não há Deus como tu, nem em cima nos céus, nem embaixo na terra. Tu que guardas o pacto e a misericórdia com os teus servos que andam diante de ti de todo o seu coração. Atenta para a oração do teu servo e para a sua súplica. Ouve o clamor e a oração que o teu servo faz hoje diante de ti. Para que os teus olhos estejam abertos para esta casa noite e dia.',cat:'grandes_oracoes',src:'1 Reis 8:23-29',dif:3,tags:['salomão','templo','pacto']},
+{id:11,title:'Oração de Daniel',text:'Ó Senhor, o grande e tremendo Deus, que guardas o pacto e a misericórdia para com os que te amam e guardam os teus mandamentos. Pecamos e nos tornamos culpados, e nos apartamos dos teus mandamentos. A ti, Senhor, pertence a justiça. A nós a confusão do rosto. Mas ao Senhor nosso Deus pertencem as misericórdias e o perdão. Inclina, ó meu Deus, os teus ouvidos, e ouve.',cat:'grandes_oracoes',src:'Daniel 9:4-9,18',dif:4,tags:['daniel','confissão','misericórdia']},
+{id:12,title:'Oração da Serenidade',text:'Senhor, concedei-me a serenidade necessária para aceitar as coisas que não posso modificar. Coragem para modificar as que posso. E sabedoria para distinguir umas das outras. Vivendo um dia de cada vez, desfrutando um momento de cada vez. Aceitando as privações como um caminho para a paz. Confiando que fareis tudo certo se eu me render à vossa vontade.',cat:'sabedoria',src:'Reinhold Niebuhr',dif:2,tags:['serenidade','sabedoria','aceitação']},
+{id:13,title:'Oração de São Francisco',text:'Senhor, fazei de mim um instrumento da vossa paz. Onde houver ódio, que eu leve o amor. Onde houver ofensa, que eu leve o perdão. Onde houver discórdia, que eu leve a união. Onde houver dúvida, que eu leve a fé. Onde houver erro, que eu leve a verdade. Onde houver desespero, que eu leve a esperança. Onde houver tristeza, que eu leve a alegria. Ó Mestre, fazei que eu procure mais consolar do que ser consolado.',cat:'consagracao',src:'São Francisco de Assis',dif:3,tags:['francisco','paz','amor','serviço']},
+{id:14,title:'Oração de Santo Agostinho',text:'Tu nos fizeste para ti, Senhor, e o nosso coração está inquieto enquanto não repousa em ti. Quem me dará que eu venha repousar em ti? Quem me concederá que venhas ao meu coração e o embriagues, para que me esqueça dos meus males e te abrace, meu único bem? O que és tu para mim? Tem piedade para que eu fale. Que sou eu para ti, para que me ordenes que te ame?',cat:'anseio',src:'Confissões — Santo Agostinho',dif:3,tags:['agostinho','busca','repouso']},
+{id:15,title:'Bênção Sacerdotal',text:'O Senhor te abençoe e te guarde. O Senhor faça resplandecer o seu rosto sobre ti e tenha misericórdia de ti. O Senhor levante sobre ti a sua face e te dê a paz.',cat:'grandes_oracoes',src:'Números 6:24-26',dif:1,tags:['bênção','paz','guarda','fundamental']},
+{id:16,title:'Entrada no Dia — Salmo 5',text:'Dá ouvidos às minhas palavras, ó Senhor. Considera o meu gemir. Presta atenção à voz do meu clamor. Meu Rei e meu Deus, porque a ti oro. De manhã ouvirás a minha voz. De manhã eu me dirigirei a ti e esperarei. Pois tu não és um Deus que se compraz na iniquidade. Mas eu pela tua grande misericórdia entrarei na tua casa.',cat:'manha',src:'Salmo 5:1-3,7',dif:2,tags:['manhã','clamor','espera']},
+{id:17,title:'Oração da Manhã — Dedicação do Dia',text:'Senhor, obrigado por mais um dia de vida. Que eu possa viver este dia para a tua glória. Guia os meus passos, as minhas palavras e os meus pensamentos. Que tua presença me acompanhe em cada momento. Que eu seja instrumento do teu amor em tudo que fizer hoje. Remove de mim o orgulho e enche-me de humildade e amor. Para a glória do teu nome. Amém.',cat:'manha',src:'Oração matinal cristã',dif:1,tags:['manhã','gratidão','guia','vida']},
+{id:18,title:'Oração da Noite — Salmo 4 e 17',text:'Em paz me deito e logo adormeço, porque só tu, Senhor, me fazes habitar em segurança. Tu me alegras mais do que os que têm muito trigo e vinho em abundância. Guarda-me como a menina dos olhos. Esconde-me à sombra das tuas asas. Ao despertar me satisfarei com a tua semelhança. Em paz repousarei, porque tu, Senhor, me fazes viver em segurança.',cat:'noite',src:'Salmo 4:7-8; 17:8,15',dif:2,tags:['noite','sono','paz','segurança']},
+{id:19,title:'Bênção sobre a Família',text:'Senhor, abençoa este lar. Que Cristo seja o fundamento desta casa. Que o amor seja a linguagem desta família. Que o perdão seja praticado quando houver falha. Que a Palavra de Deus seja o pão diário desta mesa. Afasta de nós a discórdia e o amargo espírito. Que as gerações vindouras possam dizer: nesta casa habitou o Senhor. Amém.',cat:'familia',src:'Oração pelo lar cristão',dif:2,tags:['família','lar','amor','bênção']},
+{id:20,title:'Oração pelos Filhos',text:'Senhor, tu conheces cada filho que me deste melhor do que eu os conheço. Guia-os pelo teu caminho. Protege-os do mal. Levanta homens e mulheres de caráter que os façam crescer na fé. Que eles te conheçam desde jovens e nunca se afastem de ti. Coloca em seus corações o amor pela tua Palavra. Que sejam árvores plantadas junto às correntes das águas. Amém.',cat:'familia',src:'Oração pelos filhos',dif:2,tags:['família','filhos','proteção','fé']},
+{id:21,title:'Oração pelos Pais',text:'Senhor, abençoa meus pais. Recompensa-os por todo o amor que derramaram sobre mim. Dá-lhes saúde, paz e alegria nos seus dias. Se ainda não te conhecem, que possam encontrar-te. Se já te conhecem, aprofunda sua fé. Honra-os pelo teu amor, pois o teu mandamento promete uma vida longa a quem os honra. Que em seus últimos dias conheçam a tua paz que excede todo entendimento. Amém.',cat:'familia',src:'Oração pelos pais',dif:2,tags:['família','pais','bênção','saúde']},
+{id:22,title:'Oração por Enfermos',text:'Senhor Jesus, tu que percorreste a Galileia curando todos os enfermos, olha com misericórdia para aqueles que estão doentes. Toca-os com a tua mão poderosa. Que a tua cura flua sobre eles. Fortifica os médicos e enfermeiros que os tratam. Dá aos familiares força para suportar. Que nesta provação tu sejas glorificado e que a fé deles não vacile. Amém.',cat:'enfermos',src:'Mateus 4:23; Tiago 5:14',dif:2,tags:['cura','enfermidade','misericórdia']},
+{id:23,title:'Pelas Chagas de Jesus — Cura',text:'Senhor, a tua Palavra declara que pelas chagas de Jesus somos curados. Aproximo-me do trono da graça e reclamo esta promessa sobre este que está enfermo. Que o poder que ressuscitou Cristo dos mortos opere neste corpo. Que a saúde retorne em nome de Jesus. Que o gozo do Senhor seja a sua força nos dias de prova. Cremos e declaramos: serás curado. Amém.',cat:'enfermos',src:'Isaías 53:5; Romanos 8:11',dif:3,tags:['cura','promessa','poder']},
+{id:24,title:'Por um Emprego Digno',text:'Senhor, tu és o provedor de todas as coisas. Coloca diante de mim a oportunidade certa no tempo certo. Que meu trabalho seja um reflexo do teu caráter. Abre portas que nenhum homem possa fechar. Dá-me favor diante das pessoas. Que eu trabalhe como para o Senhor, e não para os homens. Que meu trabalho honre teu nome e sustente minha família. Amém.',cat:'trabalho',src:'Colossenses 3:23; Apocalipse 3:8',dif:2,tags:['trabalho','emprego','provisão','favor']},
+{id:25,title:'Pela Provisão Financeira',text:'Senhor, tu prometeste que o justo nunca seria desamparado, nem veria seus descendentes mendigando pão. Confio em ti como meu provedor. Que minha mão seja aberta para dar e que tu possas abrir as janelas dos céus sobre minha vida. Que eu administre bem o que me confiastes. Afasta de mim a avareza e a ansiedade pelo amanhã. Amém.',cat:'trabalho',src:'Salmo 37:25; Malaquias 3:10',dif:3,tags:['finanças','provisão','confiança']},
+{id:26,title:'Oração por Sabedoria',text:'Senhor, como Salomão pediu sabedoria acima de todas as riquezas, peço-te hoje que me dês entendimento. Que eu possa discernir o bem do mal, a verdade do erro. Que tua Palavra seja lâmpada para os meus pés e luz para o meu caminho. Enche-me do Espírito Santo para que eu possa tomar decisões sábias. Se algum de vós necessita de sabedoria, peça a Deus, que a dá liberalmente. Amém.',cat:'sabedoria',src:'1 Reis 3:9; Salmo 119:105; Tiago 1:5',dif:3,tags:['sabedoria','discernimento','espírito']},
+{id:27,title:'Antes de Orar em Público',text:'Senhor, eu não venho com palavras sábias nem com eloquência humana. Venho apenas com o teu nome. Cobre minha boca com tua graça. Que quando eu abrir a boca, tu fales. Tira de mim o temor do homem, que é um laço. Que o amor que tens por este povo seja maior que qualquer medo que eu sinta. Usa-me, ó Deus, como vaso de barro cheio do teu Espírito. Amém.',cat:'orar_publico',src:'1 Coríntios 2:1-5; Provérbios 29:25',dif:2,tags:['público','coragem','medo','voz']},
+{id:28,title:'Coragem para Servir',text:'Senhor, não sou digno de estar diante de ti. Mas tu mesmo me chamaste. Aqui estou. Usa-me como instrumento da tua vontade. Que não seja eu quem fala, mas o teu Espírito em mim. Dá-me coragem quando sentir medo, palavras quando não souber o que falar, e amor quando não tiver forças. Que eles vejam a ti e não a mim. Para a glória do teu nome. Amém.',cat:'orar_publico',src:'Isaías 6:8; Mateus 10:19-20',dif:2,tags:['serviço','espírito','coragem','público']},
+{id:29,title:'Louvor — Salmo 100',text:'Celebrai o Senhor alegremente, todas as terras. Servi ao Senhor com alegria. Entrai perante ele com cântico. Sabei que o Senhor é Deus. Ele nos fez e lhe pertencemos. Somos o seu povo e as ovelhas do seu pasto. Entrai pelas suas portas com louvor, nos seus átrios com hinos. Bendizei-o e louvai o seu nome. Porque o Senhor é bom e sua misericórdia dura para sempre.',cat:'louvor',src:'Salmo 100',dif:2,tags:['louvor','adoração','alegria','misericórdia']},
+{id:30,title:'Ação de Graças',text:'Pai celeste, teu nome seja louvado por todos os teus benefícios. Por cada manhã de vida, por cada refeição à mesa, por cada abraço recebido e por cada prova que me tornou mais forte. Que a gratidão flua de mim como um rio perene. Que eu nunca me esqueça do teu amor. Em tudo dai graças, pois esta é a vontade de Deus em Cristo Jesus para convosco.',cat:'gratidao',src:'1 Tessalonicenses 5:18',dif:2,tags:['gratidão','bênção','louvor']},
+{id:31,title:'Oração pela Nação',text:'Senhor Deus, olha para esta nação. Se o teu povo se humilhar, orar, buscar a tua face e se converter dos seus maus caminhos, tu ouvirás do céu, perdoarás o pecado e sanarás esta terra. Levanta governantes tementes a Deus, juízes íntegros e líderes comprometidos com a justiça. Que tua vontade seja feita aqui como no céu. Amém.',cat:'intercecao',src:'2 Crônicas 7:14',dif:3,tags:['nação','intercessão','governo','justiça']},
+{id:32,title:'Oração de Arrependimento — Salmo 51',text:'Misericórdia de mim, ó Deus, segundo a tua bondade. Apaga as minhas transgressões segundo a multidão das tuas misericórdias. Lava-me completamente da minha iniquidade e purifica-me do meu pecado. Cria em mim um coração puro, ó Deus. E renova em mim um espírito reto. Não me rejeites da tua presença e não retires de mim o teu Espírito Santo.',cat:'penitencia',src:'Salmo 51:1-2,10-11',dif:3,tags:['perdão','arrependimento','purificação']},
+{id:33,title:'Confiança nas Provações — Habacuque',text:'Senhor, ainda que a figueira não floresça e não haja frutos nas videiras, ainda que o produto da oliveira minta e os campos não produzam mantimento, ainda que o rebanho seja cortado dos currais e não haja gado nas manjedouras, todavia me alegrarei no Senhor e me regozijarei no Deus da minha salvação.',cat:'forca',src:'Habacuque 3:17-18',dif:4,tags:['fé','adversidade','alegria','confiança']},
+{id:34,title:'A Armadura de Deus',text:'Senhor, revisto-me hoje com toda a armadura de Deus. Cingo os meus lombos com a verdade. Visto a couraça da justiça. Calço os pés com a preparação do evangelho da paz. Pego o escudo da fé com que posso apagar todos os dardos inflamados do maligno. Tomo o capacete da salvação e a espada do Espírito, que é a Palavra de Deus. Amém.',cat:'protecao',src:'Efésios 6:14-17',dif:3,tags:['proteção','armadura','espiritual']},
+{id:35,title:'Busca de Deus — Salmo 42',text:'Como o cervo anseia pelas correntes das águas, assim minha alma anseia por ti, ó Deus. A minha alma tem sede de Deus, do Deus vivo. Quando virei e me apresentarei diante de Deus? Por que estás abatida, ó minha alma? E por que te perturbas dentro de mim? Espera em Deus, porque ainda o louvarei. Ele é a salvação do meu rosto e o meu Deus.',cat:'anseio',src:'Salmo 42:1-2,5',dif:3,tags:['sede','anseio','esperança','alma']},
+{id:36,title:'Entrega Total',text:'Senhor, apresento o meu corpo como sacrifício vivo, santo e agradável a ti, que é o meu culto racional. E não me conformo com este século, mas me transformo pela renovação da minha mente, para que experimente qual seja a boa, agradável e perfeita vontade de Deus. Aqui estou, Senhor, todo rendido a ti.',cat:'consagracao',src:'Romanos 12:1-2',dif:3,tags:['consagração','rendição','transformação']},
+{id:37,title:'Louvai ao Senhor — Salmo 150',text:'Louvai ao Senhor! Louvai a Deus no seu santuário. Louvai-o no firmamento do seu poder. Louvai-o pelos seus atos poderosos. Louvai-o segundo a sua excelente grandeza. Louvai-o ao som de trombeta. Louvai-o com saltério e harpa. Louvai-o com tamborim e dança. Louvai-o com instrumentos de cordas e flauta. Todo ser que respira louve ao Senhor. Aleluia!',cat:'louvor',src:'Salmo 150',dif:2,tags:['louvor','adoração','música','alegria']},
+{id:38,title:'Oração de Rendição',text:'Senhor Jesus, venho diante de ti com mãos abertas e coração humilde. Não tenho nada a oferecer além de mim mesmo. Toma a minha vida, toma os meus planos, toma os meus medos. Eu confio em ti. Não mais a minha vontade, mas a tua. Guia-me onde quiseres, usa-me como entenderes, porque tu és o Senhor da minha vida.',cat:'consagracao',src:'Lucas 22:42; Romanos 12:1',dif:2,tags:['rendição','confiança','humildade']},
+{id:39,title:'Renovação da Mente',text:'Senhor, transforma a minha mente pelo poder do teu Espírito Santo. Arranca pensamentos de dúvida, de medo e de derrota. Planta em mim pensamentos de fé, de esperança e de vitória. Que eu pense o que é verdadeiro, honesto, justo, puro, amável e de boa fama. Que minha mente seja o templo do teu Espírito. Amém.',cat:'consagracao',src:'Romanos 12:2; Filipenses 4:8',dif:2,tags:['mente','renovação','pensamentos']},
+{id:40,title:'Intercessão pelo Próximo',text:'Senhor, venho interceder por aqueles que colocaste em meu coração. Sou apenas um mensageiro entre eles e ti. Pela autoridade que me deste em Cristo Jesus, declaro que o teu reino vem para cada vida. Que o teu Espírito os convença, que o teu amor os cure, e que a tua graça os salve. Em nome de Jesus. Amém.',cat:'intercecao',src:'1 Timóteo 2:1; João 16:23',dif:3,tags:['intercessão','reino','espírito']},
+{id:41,title:'Oração de Hannah',text:'O meu coração se alegra no Senhor. A minha força é exaltada no Senhor. Porque me alegro na tua salvação. Ninguém é santo como o Senhor, porque não há outro além de ti. Não há rocha como o nosso Deus. O Senhor mata e dá vida, faz descer à sepultura e faz subir. O Senhor empobrece e enriquece. Abaixa e também levanta.',cat:'grandes_oracoes',src:'1 Samuel 2:1-7',dif:4,tags:['hannah','louvor','poder']},
+{id:42,title:'Viver é Cristo',text:'Senhor, que para mim o viver seja Cristo e o morrer seja ganho. Que eu seja conformado à imagem do teu Filho. Que não seja mais eu quem vive, mas Cristo que vive em mim. E a vida que agora vivo na carne, vivo-a pela fé no Filho de Deus, que me amou e se entregou a si mesmo por mim.',cat:'consagracao',src:'Filipenses 1:21; Gálatas 2:20',dif:3,tags:['cristo','vida','rendição']},
+{id:43,title:'Paz que Excede o Entendimento',text:'Senhor, tu és o Príncipe da Paz. Fala a esta tempestade interior e dize: aquieta-te, sossega. Que a tua paz, que excede todo o entendimento, guarde o meu coração e os meus pensamentos em Cristo Jesus. Que eu possa repousar em ti como o discípulo que se recostou no peito de Jesus. Tu és minha paz. Amém.',cat:'paz',src:'Filipenses 4:7; Marcos 4:39; João 13:23',dif:2,tags:['paz','descanso','tempestade']},
+{id:44,title:'Iluminação Espiritual — Efésios 1',text:'Pai de glória, que o Deus de nosso Senhor Jesus Cristo vos dê espírito de sabedoria e de revelação no pleno conhecimento dele. Os olhos do vosso coração sendo iluminados, para que saibais qual é a esperança do seu chamamento, e quais as riquezas da glória da sua herança nos santos.',cat:'sabedoria',src:'Efésios 1:17-18',dif:4,tags:['sabedoria','revelação','conhecimento']},
+{id:45,title:'Oração pela Colheita Espiritual',text:'Senhor da messe, a messe é grande e os obreiros são poucos. Suplica ao Senhor da messe que mande obreiros para a sua messe. Que aqueles que ouviram a tua voz sejam enviados. Que aqueles que ainda não ouviram sejam alcançados. Que a tua Igreja cresça com vigor e que o teu nome seja glorificado entre todas as nações. Amém.',cat:'intercecao',src:'Mateus 9:37-38',dif:3,tags:['missões','evangelismo','colheita']},
+{id:46,title:'Declaração de Fé',text:'Senhor, creio que és o Deus que criou os céus e a terra. Creio que enviaste teu Filho Jesus para morrer pelos meus pecados e ressuscitar para a minha justificação. Creio que o teu Espírito habita em mim. Creio em todas as tuas promessas. Pela fé, sou mais do que vencedor através daquele que me amou.',cat:'forca',src:'João 3:16; Romanos 8:37',dif:2,tags:['fé','declaração','vitória']},
+{id:47,title:'Unidade da Igreja',text:'Pai Santo, que todos sejam um, como tu és em mim e eu em ti, que eles também sejam um em nós. Para que o mundo creia que tu me enviaste. A glória que me deste, dei-a a eles, para que sejam um como nós somos um. Eu neles e tu em mim, para que sejam aperfeiçoados em unidade.',cat:'intercecao',src:'João 17:21-23',dif:3,tags:['unidade','igreja','testemunho']},
+{id:48,title:'Amor ao Próximo',text:'Senhor Jesus, tu que dijste que o maior mandamento é amar a Deus e ao próximo, enche-me deste amor que vai além das palavras. Que eu ame com ações e em verdade. Que eu veja nos outros a tua imagem. Que eu não passe por alguém necessitado como o sacerdote passou pelo lado do ferido. Faz de mim o samaritano. Amém.',cat:'consagracao',src:'Mateus 22:37-39; 1 João 3:18',dif:2,tags:['amor','serviço','próximo']},
+{id:49,title:'Oração de Elias no Monte Carmelo',text:'Senhor, Deus de Abraão, de Isaque e de Israel, seja manifesto hoje que tu és Deus em Israel e que eu sou teu servo, e que fiz todas estas coisas segundo a tua palavra. Responde-me, ó Senhor, responde-me, para que este povo saiba que tu és o Senhor Deus e que tornaste o coração deles.',cat:'grandes_oracoes',src:'1 Reis 18:36-37',dif:4,tags:['elias','poder','nação']},
+{id:50,title:'Vem, Espírito Santo',text:'Vem, Espírito Santo, enche este coração. Que a tua presença seja sentida aqui e agora. Que o teu fogo purifique e o teu amor transforme. Que onde houver cinzas, tu tragas beleza. Onde houver luto, manto de louvor. Onde houver espírito angustiado, alegria celestial. Vem, Espírito da graça. Amém.',cat:'anseio',src:'Isaías 61:3; João 14:16',dif:2,tags:['espírito','fogo','presença']},
+{id:51,title:'Salmo 103 — Bênçãos do Senhor',text:'Bendize, ó minha alma, ao Senhor, e tudo o que há em mim bendiga o seu santo nome. Bendize, ó minha alma, ao Senhor, e não te esqueças de nenhum dos seus benefícios. Ele é quem perdoa todas as tuas iniquidades, quem sara todas as tuas enfermidades, quem resgata da cova a tua vida, quem te coroa de benignidade e misericórdias.',cat:'louvor',src:'Salmo 103:1-4',dif:3,tags:['louvor','bênção','perdão','cura']},
+{id:52,title:'Oração para Superar o Medo de Orar',text:'Senhor, o teu perfeito amor lança fora todo o temor. Eu rejeito o espírito de timidez e recebo o espírito de poder, amor e domínio próprio. Quando abrir a boca para orar, que as palavras venham de ti. Que eu lembre que oro para um Pai que me ama e não para uma plateia que me julga. Com ousadia aproximo-me do trono da graça. Amém.',cat:'orar_publico',src:'1 João 4:18; 2 Timóteo 1:7; Hebreus 4:16',dif:2,tags:['medo','timidez','público','ousadia']},
+];
+
+// ═══════════════════════════════════════════════════
+// ESTADO E PERSISTÊNCIA
+// ═══════════════════════════════════════════════════
+const DEF_STATE = {
+  xp:0, streak:0, lastStudy:null, totalEx:0, totalCorrect:0,
+  prayerData:{}, history:[], dailyGoal:10, todayDone:0, todayDate:''
+};
+
+let ST = (() => {
+  try { return Object.assign({}, DEF_STATE, JSON.parse(localStorage.getItem('oratio_v2')||'{}')); }
+  catch(e){ return {...DEF_STATE}; }
+})();
+
+function saveState(){ localStorage.setItem('oratio_v2', JSON.stringify(ST)); }
+
+function getPD(id){
+  if(!ST.prayerData[id]) ST.prayerData[id] = {rep:0,ef:2.5,interval:1,nextReview:Date.now(),correct:0,total:0};
+  return ST.prayerData[id];
+}
+
+function checkStreak(){
+  const today = new Date().toDateString();
+  const yesterday = new Date(Date.now()-86400000).toDateString();
+  if(ST.todayDate !== today){
+    if(ST.lastStudy === yesterday){ ST.streak += 1; }
+    else if(ST.lastStudy !== today){ ST.streak = 1; }
+    ST.todayDate = today; ST.todayDone = 0;
+  }
+  ST.lastStudy = today;
+}
+
+function addXP(amt, x, y){
+  ST.xp += amt;
+  const el = document.createElement('div');
+  el.className='xpp'; el.textContent='+'+amt+'xp';
+  el.style.cssText=`left:${x||200}px;top:${y||200}px;`;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),1600);
+  document.getElementById('hXP').textContent = ST.xp;
+}
+
+function getLevel(){ return Math.floor(Math.sqrt(ST.xp/100))+1; }
+
+// SM-2 Spaced Repetition
+function sm2(pd, q){
+  let {rep,ef,interval} = pd;
+  if(q<3){ rep=0; interval=1; }
+  else {
+    if(rep===0) interval=1;
+    else if(rep===1) interval=6;
+    else interval=Math.round(interval*ef);
+    rep++;
+  }
+  ef=Math.max(1.3, ef+(0.1-(5-q)*(0.08+(5-q)*0.02)));
+  pd.rep=rep; pd.ef=ef; pd.interval=interval;
+  pd.nextReview = Date.now()+(interval*86400000);
+  pd.total++; if(q>=3) pd.correct++;
+}
+
+function getDue(){
+  const now = Date.now();
+  return PRAYERS.filter(p=>getPD(p.id).nextReview<=now).slice(0,5);
+}
+function getNew(){
+  return PRAYERS.filter(p=>getPD(p.id).total===0).slice(0,5);
+}
+function getQueue(){ return [...getDue(),...getNew()].slice(0,10); }
+
+// ═══════════════════════════════════════════════════
+// EXERCÍCIO GLOBAL
+// ═══════════════════════════════════════════════════
+let EX = null; // current exercise state
+
+// ═══════════════════════════════════════════════════
+// NAVEGAÇÃO
+// ═══════════════════════════════════════════════════
+function nav(pg){
+  document.querySelectorAll('.pg').forEach(el=>el.classList.remove('on'));
+  document.querySelectorAll('.ni').forEach(el=>el.classList.remove('on'));
+  document.getElementById('pg'+pg).classList.add('on');
+  document.querySelector('[data-pg="'+pg+'"]').classList.add('on');
+  const renders = {Home:renderHome,Ex:renderExMenu,Prog:renderProg,Lib:renderLib};
+  if(renders[pg]) renders[pg]();
+}
+
+// ═══════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════
+let _toastT;
+function toast(msg,type='ok'){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='toast show '+(type||'');
+  clearTimeout(_toastT); _toastT=setTimeout(()=>el.classList.remove('show'),2500);
+}
+
+// ═══════════════════════════════════════════════════
+// HOME
+// ═══════════════════════════════════════════════════
+function renderHome(){
+  checkStreak();
+  const due=getDue().length, nw=getNew().length;
+  const pct = Math.min(100,Math.round((ST.todayDone/ST.dailyGoal)*100));
+  const lvl=getLevel();
+  const cats = Object.keys(CATS);
+  const catStats = cats.map(k=>({
+    k,info:CATS[k],
+    done:PRAYERS.filter(p=>p.cat===k&&getPD(p.id).total>0).length,
+    total:PRAYERS.filter(p=>p.cat===k).length
+  }));
+
+  document.getElementById('pgHome').innerHTML = `
+<div style="text-align:center;margin-bottom:18px;">
+  <div class="streak-fire">${ST.streak>0?'🔥':' 📿'}</div>
+  <div style="font-size:28px;font-weight:700;color:var(--a)">${ST.streak} dias</div>
+  <div style="color:var(--tm);font-size:14px">sequência de estudos</div>
+  <div style="margin-top:6px">
+    <span style="font-size:15px;color:var(--tm)">Nível ${lvl}</span>
+    <span class="lv-badge">⚡ ${ST.xp} XP</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="daily-row">
+    <div>
+      <div style="font-size:13px;color:var(--tm);margin-bottom:2px">Meta diária</div>
+      <div class="daily-pct">${pct}%</div>
+    </div>
+    <div style="text-align:right;font-size:13px;color:var(--tm)">${ST.todayDone}/${ST.dailyGoal} exercícios</div>
+  </div>
+  <div class="pb"><div class="pf" style="width:${pct}%"></div></div>
+</div>
+
+<div class="card" style="background:linear-gradient(135deg,#1a237e,#4a148c);border-color:rgba(255,215,0,.3)">
+  <div style="font-size:15px;font-weight:700;color:var(--a);margin-bottom:4px">📚 Fila de Hoje</div>
+  <div style="font-size:13px;color:#c5b8f5;margin-bottom:14px">
+    ${due} revisões • ${nw} novas orações
+  </div>
+  <button class="btn btn-p" onclick="startSession()">▶ Iniciar Sessão Diária</button>
+</div>
+
+<div style="margin-bottom:10px;font-weight:600;font-size:15px">🧠 Técnicas usadas</div>
+<div class="card" style="padding:16px">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:12px;color:var(--tm)">
+    <div>📊 <b style="color:var(--t)">Repetição Espaçada</b><br>SM-2 (Ebbinghaus)</div>
+    <div>💡 <b style="color:var(--t)">Recordação Ativa</b><br>Teste > releitura</div>
+    <div>🔀 <b style="color:var(--t)">Intercalação</b><br>Mix de categorias</div>
+    <div>🎤 <b style="color:var(--t)">Exposição gradual</b><br>Medo de público</div>
+  </div>
+</div>
+
+<div style="margin:16px 0 10px;font-weight:600;font-size:15px">📂 Categorias</div>
+<div class="catg">
+${catStats.map(c=>`
+<div class="catc" onclick="startCatSession('${c.k}')">
+  <div class="catic">${c.info.icon}</div>
+  <div class="catn">${c.info.label}</div>
+  <div class="catk">${c.done}/${c.total} memorizadas</div>
+  <div class="pb" style="margin-top:6px"><div class="pf" style="width:${c.total?Math.round(c.done/c.total*100):0}%"></div></div>
+</div>`).join('')}
+</div>`;
+  document.getElementById('hStreak').textContent = ST.streak;
+  document.getElementById('hXP').textContent = ST.xp;
+}
+
+// ═══════════════════════════════════════════════════
+// MENU DE EXERCÍCIOS
+// ═══════════════════════════════════════════════════
+function renderExMenu(){
+  document.getElementById('pgEx').innerHTML = `
+<div style="font-size:20px;font-weight:700;margin-bottom:4px">Exercícios</div>
+<div style="color:var(--tm);font-size:13px;margin-bottom:18px">Escolha um modo de treinamento</div>
+<div class="ex-grid">
+  <div class="ex-card" onclick="startExType('lacunas')">
+    <div class="ex-ico">✏️</div>
+    <div class="ex-nm">Preencha as Lacunas</div>
+    <div class="ex-ds">Complete palavras ausentes</div>
+  </div>
+  <div class="ex-card" onclick="startExType('ordem')">
+    <div class="ex-ico">🔀</div>
+    <div class="ex-nm">Ordene as Palavras</div>
+    <div class="ex-ds">Reconstrua a frase</div>
+  </div>
+  <div class="ex-card" onclick="startExType('multipla')">
+    <div class="ex-ico">🎯</div>
+    <div class="ex-nm">Múltipla Escolha</div>
+    <div class="ex-ds">Escolha a continuação</div>
+  </div>
+  <div class="ex-card" onclick="startExType('digitacao')">
+    <div class="ex-ico">⌨️</div>
+    <div class="ex-nm">Digitação Livre</div>
+    <div class="ex-ds">Escreva de memória</div>
+  </div>
+  <div class="ex-card" onclick="startExType('flashcard')">
+    <div class="ex-ico">🃏</div>
+    <div class="ex-nm">Flashcards</div>
+    <div class="ex-ds">Vire e avalie</div>
+  </div>
+  <div class="ex-card" onclick="startExType('progressivo')">
+    <div class="ex-ico">👁️</div>
+    <div class="ex-nm">Progressivo</div>
+    <div class="ex-ds">Revele palavra a palavra</div>
+  </div>
+  <div class="ex-card" onclick="startExType('cronometro')">
+    <div class="ex-ico">⏱️</div>
+    <div class="ex-nm">Contra o Tempo</div>
+    <div class="ex-ds">Digite sob pressão</div>
+  </div>
+  <div class="ex-card" onclick="startExType('publico')" style="border-color:rgba(255,215,0,.4);background:linear-gradient(135deg,rgba(26,35,126,.5),rgba(74,20,140,.3))">
+    <div class="ex-ico">🎤</div>
+    <div class="ex-nm">Oração Pública</div>
+    <div class="ex-ds">Simula falar em público</div>
+  </div>
+</div>`;
+}
+
+// ═══════════════════════════════════════════════════
+// SESSIONS
+// ═══════════════════════════════════════════════════
+function startSession(){
+  EX = { queue: getQueue(), idx:0, correct:0, type:'auto' };
+  if(!EX.queue.length) EX.queue = PRAYERS.slice(0,10);
+  nav('Ex');
+  nextExercise();
+}
+
+function startCatSession(cat){
+  const prayers = PRAYERS.filter(p=>p.cat===cat);
+  EX = { queue:prayers.slice(0,8), idx:0, correct:0, type:'auto' };
+  nav('Ex');
+  nextExercise();
+}
+
+function startExType(type){
+  EX = { queue: [...PRAYERS].sort(()=>Math.random()-.5).slice(0,8), idx:0, correct:0, type };
+  nextExercise();
+}
+
+function nextExercise(){
+  if(!EX || EX.idx >= EX.queue.length){ showCompletion(); return; }
+  const prayer = EX.queue[EX.idx];
+  const types = ['lacunas','ordem','multipla','digitacao','flashcard','progressivo','cronometro','publico'];
+  const type = EX.type === 'auto' ? types[Math.floor(Math.random()*7)] : EX.type;
+  renderExercise(prayer, type);
+}
+
+function showCompletion(){
+  const xpEarned = EX.correct * 20;
+  addXP(xpEarned, 300, 200);
+  checkStreak(); saveState();
+  document.getElementById('pgEx').innerHTML = `
+<div class="complete">
+  <div class="cmp-ico">${EX.correct >= EX.queue.length*0.8 ? '🏆' : EX.correct >= EX.queue.length*0.5 ? '⭐' : '💪'}</div>
+  <div class="cmp-t">${EX.correct >= EX.queue.length*0.8 ? 'Excelente!' : EX.correct >= EX.queue.length*0.5 ? 'Bom Trabalho!' : 'Continue Praticando!'}</div>
+  <div class="cmp-s">${EX.correct} de ${EX.queue.length} corretas • +${xpEarned} XP ganhos</div>
+  <div style="display:flex;gap:10px;margin-top:20px">
+    <button class="btn btn-p" onclick="startSession()" style="flex:1">Nova Sessão</button>
+    <button class="btn btn-s" onclick="nav('Home')" style="flex:1">Início</button>
+  </div>
+</div>`;
+}
+
+// ═══════════════════════════════════════════════════
+// EXERCISE RENDERERS
+// ═══════════════════════════════════════════════════
+function renderExercise(prayer, type){
+  const pg = document.getElementById('pgEx');
+  const prog = `${EX.idx+1}/${EX.queue.length}`;
+  const pct = Math.round((EX.idx/EX.queue.length)*100);
+  const hdr = `
+<div style="margin-bottom:14px">
+  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--tm);margin-bottom:4px">
+    <span>${prog}</span><span>${EX.correct} corretas</span>
+  </div>
+  <div class="pb"><div class="pf" style="width:${pct}%"></div></div>
+</div>`;
+
+  const renderers = { lacunas, ordem, multipla, digitacao, flashcard, progressivo, cronometro, publico };
+  if(renderers[type]) renderers[type](pg, hdr, prayer);
+  else lacunas(pg, hdr, prayer);
+}
+
+// ─── LACUNAS ───────────────────────────────────────
+function lacunas(pg, hdr, prayer){
+  const words = prayer.text.split(' ');
+  const total = words.length;
+  const n = Math.max(2, Math.min(6, Math.round(total*0.25)));
+  const indices = shuffleArr([...Array(total).keys()].filter(i=>words[i].length>3)).slice(0,n);
+  const blanks = {};
+  indices.forEach(i=>{ blanks[i]=words[i].replace(/[.,!?;:]/g,''); });
+
+  pg.innerHTML = hdr + `
+<div class="exhdr">
+  <div class="extype">✏️ Preencha as Lacunas</div>
+  <div class="extit">${prayer.title}</div>
+  <div class="extip">Complete as palavras que faltam na oração</div>
+</div>
+<div class="ptxt">${words.map((w,i)=>
+  indices.includes(i)
+    ? `<input class="blank" id="b${i}" placeholder="___" data-ans="${blanks[i]}" autocomplete="off" spellcheck="false">`
+    : w
+).join(' ')}</div>
+<div class="psrc">— ${prayer.src}</div>
+<button class="btn btn-p" onclick="checkLacunas(${JSON.stringify(indices)}, ${prayer.id})" style="margin-top:10px">Verificar</button>`;
+}
+
+function checkLacunas(indices, prayerId){
+  let ok=0;
+  indices.forEach(i=>{
+    const inp=document.getElementById('b'+i);
+    if(!inp) return;
+    const ans=inp.dataset.ans.toLowerCase().replace(/[.,!?;:]/g,'');
+    const val=inp.value.trim().toLowerCase().replace(/[.,!?;:]/g,'');
+    if(val===ans||levenshtein(val,ans)<=1){ inp.style.color='var(--ok)'; inp.style.borderColor='var(--ok)'; ok++; }
+    else { inp.style.color='var(--err)'; inp.style.borderColor='var(--err)'; inp.value=inp.dataset.ans; }
+  });
+  const correct = ok === indices.length;
+  recordResult(prayerId, correct);
+  setTimeout(()=>{ EX.idx++; nextExercise(); }, 1200);
+}
+
+// ─── ORDEM ───────────────────────────────────────
+function ordem(pg, hdr, prayer){
+  const sentences = prayer.text.split(/(?<=[.!?])\s+/).slice(0,3);
+  const target = sentences[Math.floor(Math.random()*sentences.length)].replace(/[.!?,;]/g,'').trim();
+  const words = shuffleArr(target.split(' ').filter(w=>w.length>0));
+  const wordsCopy = [...words];
+
+  pg.innerHTML = hdr + `
+<div class="exhdr">
+  <div class="extype">🔀 Ordene as Palavras</div>
+  <div class="extit">${prayer.title}</div>
+  <div class="extip">Toque nas palavras na ordem correta</div>
+</div>
+<div class="psrc" style="text-align:left;margin-bottom:8px">— ${prayer.src}</div>
+<div class="azone" id="azone">${wordsCopy.map((w,i)=>`<div class="wc" onclick="removeWord(${i})" id="aw${i}" style="display:none">${w}</div>`).join('')}</div>
+<div class="wbank" id="wbank">${words.map((w,i)=>`<div class="wc" onclick="pickWord(${i},this)" id="ww${i}">${w}</div>`).join('')}</div>
+<div id="ordFb"></div>
+<button class="btn btn-p" onclick="checkOrdem(${JSON.stringify(target.split(' '))},${prayer.id})" style="margin-top:10px">Verificar</button>`;
+  window._ordWords = []; window._origWords = target.split(' ').map(w=>w.replace(/[.,!?;:]/g,''));
+}
+
+function pickWord(idx, el){
+  if(el.classList.contains('sel')) return;
+  el.classList.add('sel');
+  window._ordWords.push(document.getElementById('ww'+idx).textContent);
+  document.getElementById('aw'+idx).style.display='';
+}
+function removeWord(idx){
+  const aw = document.getElementById('aw'+idx);
+  const ww = document.getElementById('ww'+idx);
+  if(aw) aw.style.display='none';
+  if(ww) ww.classList.remove('sel');
+  window._ordWords = window._ordWords.filter((_,i)=>i!==window._ordWords.lastIndexOf(aw.textContent));
+}
+
+function checkOrdem(target, prayerId){
+  const given = Array.from(document.getElementById('azone').querySelectorAll('.wc')).filter(el=>el.style.display!=='none').map(el=>el.textContent.toLowerCase().replace(/[.,!?;:]/g,''));
+  const tgt = target.map(w=>w.toLowerCase().replace(/[.,!?;:]/g,''));
+  const correct = given.length===tgt.length && given.every((w,i)=>w===tgt[i]||levenshtein(w,tgt[i])<=1);
+  recordResult(prayerId, correct);
+  if(!correct){
+    document.getElementById('ordFb').innerHTML=`<div class="feedback-box bad">✗ Ordem correta: <em>${target.join(' ')}</em></div>`;
+  }
+  setTimeout(()=>{ EX.idx++; nextExercise(); }, correct?1000:2500);
+}
+
+// ─── MÚLTIPLA ESCOLHA ────────────────────────────
+function multipla(pg, hdr, prayer){
+  const sentences = prayer.text.split(/(?<=[.!?])\s+/);
+  const idx = Math.min(Math.floor(Math.random()*(sentences.length-1)), sentences.length-2);
+  const prompt = sentences.slice(0,idx+1).join(' ');
+  const correct = sentences[idx+1] || sentences[0];
+  const otherPrayers = PRAYERS.filter(p=>p.id!==prayer.id);
+  const wrongs = shuffleArr(otherPrayers).slice(0,3).map(p=>{
+    const s=p.text.split(/(?<=[.!?])\s+/);
+    return s[Math.floor(Math.random()*s.length)];
+  });
+  const options = shuffleArr([correct,...wrongs]).slice(0,4);
+
+  pg.innerHTML = hdr + `
+<div class="exhdr">
+  <div class="extype">🎯 Múltipla Escolha</div>
+  <div class="extit">${prayer.title}</div>
+  <div class="extip">Como continua esta oração?</div>
+</div>
+<div class="ptxt">"${prompt}<span style="color:var(--a)"> _____</span>"</div>
+<div class="psrc">— ${prayer.src}</div>
+<div class="cg">
+${options.map((opt,i)=>`<div class="cb" onclick="checkMultipla(this,'${escQ(opt)}','${escQ(correct)}',${ prayer.id})">${opt}</div>`).join('')}
+</div>`;
+}
+
+function checkMultipla(el, chosen, correct, prayerId){
+  if(el.style.pointerEvents==='none') return;
+  document.querySelectorAll('.cb').forEach(b=>b.style.pointerEvents='none');
+  const ok = chosen===correct;
+  el.classList.add(ok?'ok2':'bad');
+  if(!ok) document.querySelectorAll('.cb').forEach(b=>{ if(b.textContent.trim()===correct) b.classList.add('ok2'); });
+  recordResult(prayerId, ok);
+  setTimeout(()=>{ EX.idx++; nextExercise(); }, 1200);
+}
+
+// ─── DIGITAÇÃO ───────────────────────────────────
+function digitacao(pg, hdr, prayer){
+  pg.innerHTML = hdr + `
+<div class="exhdr">
+  <div class="extype">⌨️ Escreva de Memória</div>
+  <div class="extit">${prayer.title}</div>
+  <div class="extip">Escreva esta oração de memória. Use dicas se precisar.</div>
+</div>
+<div style="margin-bottom:8px;font-size:13px;color:var(--tm)">— ${prayer.src}</div>
+<button class="hint-btn" onclick="showHint('${escQ(prayer.text.split(' ').slice(0,8).join(' '))}...')">💡 Dica (primeiras palavras)</button>
+<div id="hintBox"></div>
+<textarea class="ta" id="digTa" placeholder="Escreva a oração aqui..." rows="5"></textarea>
+<button class="btn btn-p" onclick="checkDigitacao(${JSON.stringify(prayer.text)},${prayer.id})" style="margin-top:10px">Verificar</button>`;
+}
+
+function showHint(hint){ document.getElementById('hintBox').innerHTML=`<div class="feedback-box ok" style="font-size:13px;margin-bottom:8px">💡 ${hint}</div>`; }
+
+function checkDigitacao(correct, prayerId){
+  const val = document.getElementById('digTa').value.trim();
+  const sim = similarity(val, correct);
+  const ok = sim >= 0.65;
+  const words = correct.split(' ');
+  const given = val.split(' ');
+  let diff = words.map((w,i)=>{
+    const gw = given[i]||'';
+    const wc = w.replace(/[.,!?;:]/g,'').toLowerCase();
+    const gc = gw.replace(/[.,!?;:]/g,'').toLowerCase();
+    if(gc===wc||levenshtein(gc,wc)<=1) return `<span class="ok2">${w}</span>`;
+    if(!gw) return `<span class="mis">[${w}]</span>`;
+    return `<span class="bad">${gw}</span> <span class="mis">[${w}]</span>`;
+  }).join(' ');
+  document.getElementById('digTa').style.display='none';
+  const el = document.createElement('div');
+  el.className='type-diff ptxt'; el.innerHTML=diff;
+  document.getElementById('digTa').parentNode.insertBefore(el, document.getElementById('digTa'));
+  toast(ok?`✓ ${Math.round(sim*100)}% correto! Ótimo!`:`${Math.round(sim*100)}% — Continue praticando!`, ok?'ok':'bad');
+  recordResult(prayerId, ok);
+  setTimeout(()=>{ EX.idx++; nextExercise(); }, 2500);
+}
+
+// ─── FLASHCARD ───────────────────────────────────
+function flashcard(pg, hdr, prayer){
+  pg.innerHTML = hdr + `
+<div class="exhdr">
+  <div class="extype">🃏 Flashcard</div>
+  <div class="extip">Toque no cartão para revelar. Avalie sua recordação.</div>
+</div>
+<div class="fc" id="fc" onclick="flipCard()">
+  <div class="fci">
+    <div class="fcf">
+      <div class="fcl">Título da Oração</div>
+      <div class="fcc">${prayer.title}</div>
+      <div class="fcs">${prayer.src}</div>
+    </div>
+    <div class="fcb">
+      <div class="fcl">Texto Completo</div>
+      <div class="fcc" style="font-size:14px;overflow-y:auto;max-height:200px">${prayer.text}</div>
+    </div>
+  </div>
+</div>
+<div id="fcRating" style="display:none">
+  <div style="text-align:center;margin-bottom:10px;font-size:14px;color:var(--tm)">Como foi sua recordação?</div>
+  <div class="rb">
+    <button class="rbtn" style="background:rgba(248,81,73,.2);color:var(--err)" onclick="rateCard(1,${prayer.id})">😰 Difícil</button>
+    <button class="rbtn" style="background:rgba(227,179,65,.2);color:var(--warn)" onclick="rateCard(3,${prayer.id})">🤔 Regular</button>
+    <button class="rbtn" style="background:rgba(86,211,100,.2);color:var(--ok)" onclick="rateCard(5,${prayer.id})">😁 Fácil!</button>
+  </div>
+</div>`;
+}
+
+function flipCard(){
+  document.getElementById('fc').classList.toggle('flip');
+  document.getElementById('fcRating').style.display='block';
+}
+
+function rateCard(q, prayerId){ recordResult(prayerId, q>=3, q); EX.idx++; nextExercise(); }
+
+// ─── PROGRESSIVO ─────────────────────────────────
+function progressivo(pg, hdr, prayer){
+  const words = prayer.text.split(' ');
+  let revealed = Math.max(3, Math.floor(words.length*0.3));
+  window._progWords = words;
+  window._progRevealed = revealed;
+
+  function renderProg(){
+    const display = words.map((w,i)=>i<revealed?w:'<span style="color:var(--a)">___</span>').join(' ');
+    document.getElementById('progText').innerHTML=display;
+    document.getElementById('progCount').textContent=`${revealed}/${words.length} palavras visíveis`;
+  }
+
+  pg.innerHTML = hdr + `
+<div class="exhdr">
+  <div class="extype">👁️ Memorização Progressiva</div>
+  <div class="extit">${prayer.title}</div>
+  <div class="extip">Tente completar mentalmente as partes ocultas</div>
+</div>
+<div id="progText" class="ptxt"></div>
+<div id="progCount" style="font-size:12px;color:var(--tm);text-align:right;margin-top:4px"></div>
+<div class="psrc">— ${prayer.src}</div>
+<div style="display:flex;gap:8px;margin-top:12px">
+  <button class="btn btn-s" onclick="revealMore()" style="flex:1">👁️ Revelar mais</button>
+  <button class="btn btn-s" onclick="hideMore()" style="flex:1">🙈 Ocultar mais</button>
+</div>
+<button class="btn btn-p" onclick="recordResult(${prayer.id},true);EX.idx++;nextExercise();" style="margin-top:10px">✓ Estudei esta oração</button>`;
+
+  window._progRenderFn = renderProg;
+  renderProg();
+}
+
+function revealMore(){
+  window._progRevealed = Math.min(window._progWords.length, window._progRevealed+3);
+  window._progRenderFn();
+}
+function hideMore(){
+  window._progRevealed = Math.max(2, window._progRevealed-3);
+  window._progRenderFn();
+}
+
+// ─── CRONÔMETRO ──────────────────────────────────
+function cronometro(pg, hdr, prayer){
+  let timeLeft = Math.max(60, prayer.text.split(' ').length*2.5|0);
+  let interval;
+
+  pg.innerHTML = hdr + `
+<div class="exhdr">
+  <div class="extype">⏱️ Contra o Tempo</div>
+  <div class="extit">${prayer.title}</div>
+  <div class="extip">Digite a oração antes do tempo acabar!</div>
+</div>
+<div class="timer" id="chrono">${timeLeft}s</div>
+<textarea class="ta" id="cronTa" placeholder="Escreva a oração aqui..." rows="4"></textarea>
+<button class="btn btn-p" id="startCron" onclick="startCronometro(${timeLeft},${prayer.id})" style="margin-top:10px">▶ Iniciar Cronômetro</button>
+<div id="cronFb"></div>`;
+}
+
+function startCronometro(total, prayerId){
+  document.getElementById('startCron').style.display='none';
+  let left=total;
+  const ch=document.getElementById('chrono');
+  const iv=setInterval(()=>{
+    left--;ch.textContent=left+'s';
+    if(left<=10) ch.classList.add('red');
+    if(left<=0){ clearInterval(iv); finishCron(prayerId); }
+  },1000);
+  window._cronInterval=iv;
+}
+
+function finishCron(prayerId){
+  const ta=document.getElementById('cronTa');
+  const val=ta?ta.value.trim():'';
+  const prayer=PRAYERS.find(p=>p.id===prayerId);
+  const sim=prayer?similarity(val,prayer.text):0;
+  const ok=sim>=0.5;
+  if(ta) ta.disabled=true;
+  document.getElementById('cronFb').innerHTML=`<div class="feedback-box ${ok?'ok':'bad'}">${ok?'✓ Parabéns! '+Math.round(sim*100)+'% de precisão!':'⏰ Tempo! '+Math.round(sim*100)+'% — continue praticando!'}</div>`;
+  recordResult(prayerId, ok);
+  setTimeout(()=>{ EX.idx++; nextExercise(); }, 2500);
+}
+
+// ─── ORAÇÃO PÚBLICA ──────────────────────────────
+function publico(pg, hdr, prayer){
+  let duration=0, iv=null, started=false;
+  pg.innerHTML = hdr + `
+<div class="exhdr">
+  <div class="extype">🎤 Oração em Público</div>
+  <div class="extit">${prayer.title}</div>
+  <div class="extip">Leia em voz alta como se estivesse orando em público. Respire fundo.</div>
+</div>
+<div class="pub-box">
+  <div style="font-size:13px;color:rgba(255,255,255,.6);margin-bottom:6px">⏱ Tempo de oração</div>
+  <div class="pub-timer" id="pubTimer">0:00</div>
+  <div class="pub-txt">${prayer.text}</div>
+  <div style="font-size:12px;color:rgba(255,215,0,.7);margin-top:8px">— ${prayer.src}</div>
+</div>
+<div style="background:var(--s2);border-radius:12px;padding:14px;margin:14px 0;font-size:13px;color:var(--tm)">
+  <b style="color:var(--t)">🧠 Dicas para orar em público:</b><br>
+  1. Respire profundamente antes de começar<br>
+  2. Fale devagar — a maioria fala rápido demais<br>
+  3. Foque em Deus, não na plateia<br>
+  4. Tudo bem não ser perfeito
+</div>
+<div style="display:flex;gap:8px">
+  <button class="btn btn-p" id="pubBtn" onclick="togglePublico()" style="flex:2">▶ Iniciar Oração</button>
+  <button class="btn btn-s" id="pubDone" style="flex:1;display:none" onclick="finishPublico(${prayer.id})">✓ Concluí</button>
+</div>`;
+}
+
+function togglePublico(){
+  const btn=document.getElementById('pubBtn');
+  const doneBtn=document.getElementById('pubDone');
+  if(!window._pubIv){
+    let s=0;
+    window._pubIv=setInterval(()=>{
+      s++; const m=Math.floor(s/60), sec=s%60;
+      document.getElementById('pubTimer').textContent=`${m}:${sec.toString().padStart(2,'0')}`;
+    },1000);
+    btn.textContent='⏸ Pausar';
+    doneBtn.style.display='';
+  } else {
+    clearInterval(window._pubIv); window._pubIv=null;
+    btn.textContent='▶ Retomar';
+  }
+}
+
+function finishPublico(prayerId){
+  clearInterval(window._pubIv); window._pubIv=null;
+  toast('🎤 Ótimo! Você praticou orar em público!','ok');
+  recordResult(prayerId, true, 5);
+  EX.idx++; nextExercise();
+}
+
+// ═══════════════════════════════════════════════════
+// PROGRESSO
+// ═══════════════════════════════════════════════════
+function renderProg(){
+  checkStreak();
+  const mastered=PRAYERS.filter(p=>getPD(p.id).correct>=3&&getPD(p.id).ef>=2.3).length;
+  const studied=PRAYERS.filter(p=>getPD(p.id).total>0).length;
+  const acc=ST.totalEx>0?Math.round(ST.totalCorrect/ST.totalEx*100):0;
+  const lvl=getLevel();
+  const xpToNext=(lvl*lvl*100);
+  const xpProg=Math.round((ST.xp/(xpToNext))*100);
+
+  // Last 28 days calendar
+  const days=[];
+  for(let i=27;i>=0;i--){
+    const d=new Date(Date.now()-i*86400000).toDateString();
+    const h=ST.history.filter(x=>new Date(x.ts).toDateString()===d);
+    days.push({done:h.length>0, good:h.filter(x=>x.ok).length>0});
+  }
+
+  const catStats = Object.entries(CATS).map(([k,v])=>{
+    const ps=PRAYERS.filter(p=>p.cat===k);
+    const done=ps.filter(p=>getPD(p.id).total>0).length;
+    return {k,icon:v.icon,label:v.label,done,total:ps.length};
+  }).filter(c=>c.total>0);
+
+  const badges=[
+    {ico:'🔥',nm:'3 dias seguidos',ok:ST.streak>=3},
+    {ico:'⚡',nm:'100 XP',ok:ST.xp>=100},
+    {ico:'📖',nm:'10 orações',ok:studied>=10},
+    {ico:'🏆',nm:'50 exercícios',ok:ST.totalEx>=50},
+    {ico:'🌟',nm:'Nível 5',ok:lvl>=5},
+    {ico:'💎',nm:'5 memorizadas',ok:mastered>=5},
+    {ico:'🎤',nm:'Orou em público',ok:ST.history.some(x=>x.type==='publico')},
+    {ico:'🔁',nm:'7 dias seguidos',ok:ST.streak>=7},
+  ];
+
+  document.getElementById('pgProg').innerHTML=`
+<div style="font-size:20px;font-weight:700;margin-bottom:16px">Seu Progresso</div>
+
+<div class="sgrid">
+  <div class="sc"><div class="sn">🔥${ST.streak}</div><div class="sl">Dias seguidos</div></div>
+  <div class="sc"><div class="sn">⚡${ST.xp}</div><div class="sl">XP Total</div></div>
+  <div class="sc"><div class="sn">${studied}</div><div class="sl">Orações estudadas</div></div>
+  <div class="sc"><div class="sn">${mastered}</div><div class="sl">Memorizadas</div></div>
+  <div class="sc"><div class="sn">${ST.totalEx}</div><div class="sl">Exercícios</div></div>
+  <div class="sc"><div class="sn">${acc}%</div><div class="sl">Precisão</div></div>
+</div>
+
+<div class="card">
+  <div class="ct">Nível ${lvl} ${lvl>=10?'🏆':lvl>=5?'⭐':''}</div>
+  <div style="font-size:13px;color:var(--tm);margin-bottom:6px">${ST.xp}/${xpToNext} XP para nível ${lvl+1}</div>
+  <div class="pb"><div class="pf" style="width:${Math.min(100,xpProg)}%"></div></div>
+</div>
+
+<div class="card">
+  <div class="ct" style="margin-bottom:10px">Últimos 28 Dias</div>
+  <div class="dcal">${days.map(d=>`<div class="dd${d.done?d.good?' done':' part':''}"></div>`).join('')}</div>
+  <div style="display:flex;gap:16px;font-size:11px;color:var(--tm);margin-top:6px">
+    <span><span class="dd done" style="display:inline-block;width:10px;height:10px;margin-right:4px;border-radius:2px"></span>Completo</span>
+    <span><span class="dd part" style="display:inline-block;width:10px;height:10px;margin-right:4px;border-radius:2px"></span>Parcial</span>
+  </div>
+</div>
+
+<div class="card">
+  <div class="ct" style="margin-bottom:12px">Progresso por Categoria</div>
+  ${catStats.map(c=>`
+  <div class="prog-bar-row">
+    <div class="prog-lbl"><span>${c.icon} ${c.label}</span><span>${c.done}/${c.total}</span></div>
+    <div class="pb"><div class="pf" style="width:${c.total?Math.round(c.done/c.total*100):0}%"></div></div>
+  </div>`).join('')}
+</div>
+
+<div class="card">
+  <div class="ct" style="margin-bottom:10px">Conquistas</div>
+  <div class="badge-row">
+    ${badges.map(b=>`<div class="badge${b.ok?' earned':''}">${b.ico}<br><span style="font-size:10px">${b.nm}</span></div>`).join('')}
+  </div>
+</div>`;
+}
+
+// ═══════════════════════════════════════════════════
+// BIBLIOTECA
+// ═══════════════════════════════════════════════════
+let _libFilter='all';
+
+function renderLib(){
+  const cats=[{k:'all',label:'Todas',icon:'📚'},...Object.entries(CATS).map(([k,v])=>({k,label:v.label,icon:v.icon}))];
+  const filtered=_libFilter==='all'?PRAYERS:PRAYERS.filter(p=>p.cat===_libFilter);
+
+  document.getElementById('pgLib').innerHTML=`
+<div style="font-size:20px;font-weight:700;margin-bottom:12px">Biblioteca de Orações</div>
+<div style="overflow-x:auto;white-space:nowrap;margin-bottom:16px;padding-bottom:4px">
+  ${cats.filter(c=>c.k==='all'||PRAYERS.some(p=>p.cat===c.k)).map(c=>`
+  <button onclick="_libFilter='${c.k}';renderLib()" class="btn btn-sm" style="display:inline-flex;white-space:nowrap;margin-right:6px;${_libFilter===c.k?'background:var(--a);color:#111':''}">
+    ${c.icon} ${c.label}
+  </button>`).join('')}
+</div>
+${filtered.map(p=>{
+  const pd=getPD(p.id);
+  const stars='★'.repeat(p.dif)+'☆'.repeat(5-p.dif);
+  return `<div class="pli" onclick="openPrayer(${p.id})">
+  <div class="plt">${p.title} ${pd.total>0?'<span style="color:var(--ok);font-size:11px">✓</span>':''}</div>
+  <div class="plp">${p.text.substring(0,100)}...</div>
+  <div class="plm">
+    <span class="tag">${CATS[p.cat]?.label||p.cat}</span>
+    <span class="tag">${p.src}</span>
+    <span class="tag" style="color:var(--warn)">${stars}</span>
+  </div>
+</div>`;}).join('')}`;
+}
+
+function openPrayer(id){
+  const p=PRAYERS.find(x=>x.id===id);
+  if(!p) return;
+  const pg=document.getElementById('pgLib');
+  pg.innerHTML=`
+<button class="back-btn" onclick="renderLib()">← Voltar</button>
+<div style="font-size:20px;font-weight:700;margin-bottom:4px">${p.title}</div>
+<div style="color:var(--a);font-size:13px;margin-bottom:14px">— ${p.src}</div>
+<div class="ptxt">${p.text}</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0">
+  ${p.tags.map(t=>`<span class="tag">${t}</span>`).join('')}
+  <span class="tag">${CATS[p.cat]?.icon} ${CATS[p.cat]?.label}</span>
+</div>
+<div class="sep"></div>
+<div style="font-size:14px;font-weight:600;margin-bottom:10px">Praticar esta oração:</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+  ${['lacunas','ordem','multipla','digitacao','flashcard','progressivo','cronometro','publico'].map(t=>{
+    const names={lacunas:'✏️ Lacunas',ordem:'🔀 Ordenar',multipla:'🎯 Múltipla',digitacao:'⌨️ Digitar',flashcard:'🃏 Flashcard',progressivo:'👁️ Progressivo',cronometro:'⏱️ Cronômetro',publico:'🎤 Público'};
+    return `<button class="btn btn-s" style="font-size:13px;padding:10px" onclick="practiceOne(${id},'${t}')">${names[t]}</button>`;
+  }).join('')}
+</div>`;
+}
+
+function practiceOne(id, type){
+  const p=PRAYERS.find(x=>x.id===id);
+  EX={queue:[p],idx:0,correct:0,type};
+  nav('Ex');
+  renderExercise(p, type);
+}
+
+// ═══════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════
+function recordResult(prayerId, ok, quality){
+  const q = quality !== undefined ? quality : (ok ? 4 : 1);
+  const pd=getPD(prayerId);
+  sm2(pd,q);
+  ST.totalEx++; if(ok) ST.totalCorrect++;
+  ST.todayDone++;
+  ST.history.push({ts:Date.now(),id:prayerId,ok,type:EX?.type||'auto'});
+  if(ST.history.length>500) ST.history=ST.history.slice(-500);
+  saveState();
+  if(ok) addXP(10, 300, 200);
+  document.getElementById('hStreak').textContent=ST.streak;
+  document.getElementById('hXP').textContent=ST.xp;
+}
+
+function shuffleArr(a){ return a.slice().sort(()=>Math.random()-.5); }
+
+function levenshtein(a,b){
+  if(!a||!b) return Math.max((a||'').length,(b||'').length);
+  const m=a.length,n=b.length,dp=Array.from({length:m+1},(_,i)=>Array.from({length:n+1},(_,j)=>i||j));
+  for(let i=1;i<=m;i++) for(let j=1;j<=n;j++) dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  return dp[m][n];
+}
+
+function similarity(a,b){
+  if(!a||!b) return 0;
+  const wa=a.toLowerCase().replace(/[.,!?;:]/g,'').split(/\s+/).filter(Boolean);
+  const wb=b.toLowerCase().replace(/[.,!?;:]/g,'').split(/\s+/).filter(Boolean);
+  if(!wb.length) return 0;
+  let matches=0;
+  wa.forEach(w=>{ if(wb.some(x=>levenshtein(w,x)<=Math.max(1,Math.floor(w.length*.25)))) matches++; });
+  return matches/wb.length;
+}
+
+function escQ(s){ return (s||'').replace(/'/g,"\\'").replace(/"/g,'\\"'); }
+
+// Init
+checkStreak(); saveState(); renderHome();
+</script>
+</body>
+</html>
