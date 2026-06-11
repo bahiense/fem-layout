@@ -667,17 +667,43 @@ function showRetryButtons(){
   document.getElementById('pgEx').appendChild(div);
 }
 
+function toggleHint(){
+  const prayer = PRAYERS.find(p=>p.id===window._hintPrayerId);
+  if(!prayer) return;
+  const area = document.getElementById('hintArea');
+  const btn = document.getElementById('hintBtn');
+  if(!area) return;
+  const words = prayer.text.split(' ');
+  window._hintLevel = (window._hintLevel||0) + 1;
+  area.style.display = '';
+  if(window._hintLevel === 1){
+    area.innerHTML = `💡 <em>"${words.slice(0,8).join(' ')}…"</em>`;
+    if(btn) btn.textContent = '💡 Ver mais';
+  } else if(window._hintLevel === 2){
+    area.innerHTML = `💡 <em>"${words.slice(0, Math.ceil(words.length/2)).join(' ')}…"</em>`;
+    if(btn) btn.textContent = '💡 Texto completo';
+  } else {
+    area.innerHTML = `💡 <em>"${prayer.text}"</em><div style="font-size:11px;color:var(--tm);margin-top:4px">— ${prayer.src}</div>`;
+    if(btn){ btn.textContent='✕ Fechar'; btn.onclick=()=>{ area.style.display='none'; window._hintLevel=0; btn.textContent='💡 Dica'; btn.onclick=toggleHint; }; }
+  }
+}
+
 function renderExercise(prayer, type){
   const pg = document.getElementById('pgEx');
   const prog = `${EX.idx+1}/${EX.queue.length}`;
   const pct = Math.round((EX.idx/EX.queue.length)*100);
+  window._hintLevel = 0;
+  window._hintPrayerId = prayer.id;
   const hdr = `
-<div style="margin-bottom:14px">
-  <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--tm);margin-bottom:4px">
-    <span>${prog}</span><span>${EX.correct} corretas</span>
+<div style="margin-bottom:10px">
+  <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--tm);margin-bottom:4px">
+    <span>${prog}</span>
+    <button class="hint-btn" id="hintBtn" onclick="toggleHint()" style="font-size:12px;padding:3px 10px">💡 Dica</button>
+    <span>${EX.correct} corretas</span>
   </div>
   <div class="pb"><div class="pf" style="width:${pct}%"></div></div>
-</div>`;
+</div>
+<div id="hintArea" style="display:none;background:var(--s2);border-left:3px solid var(--a);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;line-height:1.6;color:var(--t)"></div>`;
 
   const renderers = { lacunas, ordem, multipla, digitacao, flashcard, progressivo, cronometro, publico, iniciais, identificar, parear, eco };
   if(renderers[type]) renderers[type](pg, hdr, prayer);
@@ -821,13 +847,10 @@ function digitacao(pg, hdr, prayer){
   <div class="extip">Escreva esta oração de memória. Use dicas se precisar.</div>
 </div>
 <div style="margin-bottom:8px;font-size:13px;color:var(--tm)">— ${prayer.src}</div>
-<button class="hint-btn" onclick="showHint('${escQ(prayer.text.split(' ').slice(0,8).join(' '))}...')">💡 Dica (primeiras palavras)</button>
-<div id="hintBox"></div>
 <textarea class="ta" id="digTa" placeholder="Escreva a oração aqui..." rows="5"></textarea>
 <button class="btn btn-p" onclick="checkDigitacao(${JSON.stringify(prayer.text)},${prayer.id})" style="margin-top:10px">Verificar</button>`;
 }
 
-function showHint(hint){ document.getElementById('hintBox').innerHTML=`<div class="feedback-box ok" style="font-size:13px;margin-bottom:8px">💡 ${hint}</div>`; }
 
 function checkDigitacao(correct, prayerId){
   const val = document.getElementById('digTa').value.trim();
@@ -1031,17 +1054,22 @@ function finishPublico(prayerId){
 
 // ─── PRIMEIRAS LETRAS ────────────────────────────
 function iniciais(pg, hdr, prayer){
-  const text = prayer.text.split(/(?<=[.!?])\s+/).slice(0,3).join(' ');
-  const hint = text.split(' ').map(w=>w.trim().replace(/[.,!?;:]/g,'')[0]||'').join(' ');
+  const sentences = prayer.text.split(/(?<=[.!?])\s+/).slice(0,3);
+  const text = sentences.join(' ');
+  const hintLines = sentences.map(s=>{
+    const ws = s.trim().split(' ').filter(w=>w);
+    const inits = ws.map(w=>w.replace(/[.,!?;:]/g,'')[0]||'').join('  ');
+    return `<div style="margin-bottom:10px"><div style="font-size:11px;color:var(--tm);margin-bottom:2px">${ws.length} palavra${ws.length>1?'s':''} neste trecho:</div><div style="font-size:16px;letter-spacing:4px;font-weight:bold;color:var(--a);line-height:2">${inits}</div></div>`;
+  }).join('');
 
   pg.innerHTML = hdr + `
 <div class="exhdr">
   <div class="extype">🔤 Primeiras Letras</div>
   <div class="extit">${prayer.title}</div>
-  <div class="extip">Use as iniciais como guia e escreva a oração completa</div>
+  <div class="extip">Cada letra é o início de uma palavra. Use 💡 Dica se travar.</div>
 </div>
 <div class="psrc" style="margin-bottom:8px">— ${prayer.src}</div>
-<div style="font-size:15px;letter-spacing:3px;color:var(--a);font-weight:bold;background:var(--s2);padding:12px;border-radius:10px;line-height:2.4;word-break:break-all">${hint}</div>
+<div style="background:var(--s2);padding:12px;border-radius:10px">${hintLines}</div>
 <textarea class="ta" id="iniTa" placeholder="Escreva a oração completa aqui..." rows="5" style="margin-top:10px"></textarea>
 <button class="btn btn-p" onclick="checkIniciais(${JSON.stringify(text)},${prayer.id})" style="margin-top:10px">Verificar</button>`;
 }
