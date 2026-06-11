@@ -569,6 +569,26 @@ function renderExMenu(){
     <div class="ex-nm">Oração Pública</div>
     <div class="ex-ds">Simula falar em público</div>
   </div>
+  <div class="ex-card" onclick="startExType('iniciais')">
+    <div class="ex-ico">🔤</div>
+    <div class="ex-nm">Primeiras Letras</div>
+    <div class="ex-ds">Use as iniciais como guia</div>
+  </div>
+  <div class="ex-card" onclick="startExType('identificar')">
+    <div class="ex-ico">🔍</div>
+    <div class="ex-nm">Identifique</div>
+    <div class="ex-ds">A qual oração pertence?</div>
+  </div>
+  <div class="ex-card" onclick="startExType('parear')">
+    <div class="ex-ico">🔗</div>
+    <div class="ex-nm">Conecte Pares</div>
+    <div class="ex-ds">Liga título ao início</div>
+  </div>
+  <div class="ex-card" onclick="startExType('eco')">
+    <div class="ex-ico">🧠</div>
+    <div class="ex-nm">Memória Eco</div>
+    <div class="ex-ds">Leia, memorize, reproduza</div>
+  </div>
 </div>`;
 }
 
@@ -597,8 +617,8 @@ function startExType(type){
 function nextExercise(){
   if(!EX || EX.idx >= EX.queue.length){ showCompletion(); return; }
   const prayer = EX.queue[EX.idx];
-  const types = ['lacunas','ordem','multipla','digitacao','flashcard','progressivo','cronometro','publico'];
-  const type = EX.type === 'auto' ? types[Math.floor(Math.random()*7)] : EX.type;
+  const types = ['lacunas','ordem','multipla','digitacao','flashcard','progressivo','cronometro','iniciais','identificar','eco'];
+  const type = EX.type === 'auto' ? types[Math.floor(Math.random()*types.length)] : EX.type;
   renderExercise(prayer, type);
 }
 
@@ -633,7 +653,7 @@ function renderExercise(prayer, type){
   <div class="pb"><div class="pf" style="width:${pct}%"></div></div>
 </div>`;
 
-  const renderers = { lacunas, ordem, multipla, digitacao, flashcard, progressivo, cronometro, publico };
+  const renderers = { lacunas, ordem, multipla, digitacao, flashcard, progressivo, cronometro, publico, iniciais, identificar, parear, eco };
   if(renderers[type]) renderers[type](pg, hdr, prayer);
   else lacunas(pg, hdr, prayer);
 }
@@ -977,6 +997,158 @@ function finishPublico(prayerId){
   EX.idx++; nextExercise();
 }
 
+// ─── PRIMEIRAS LETRAS ────────────────────────────
+function iniciais(pg, hdr, prayer){
+  const text = prayer.text.split(/(?<=[.!?])\s+/).slice(0,3).join(' ');
+  const hint = text.split(' ').map(w=>w.trim().replace(/[.,!?;:]/g,'')[0]||'').join(' ');
+
+  pg.innerHTML = hdr + `
+<div class="exhdr">
+  <div class="extype">🔤 Primeiras Letras</div>
+  <div class="extit">${prayer.title}</div>
+  <div class="extip">Use as iniciais como guia e escreva a oração completa</div>
+</div>
+<div class="psrc" style="margin-bottom:8px">— ${prayer.src}</div>
+<div style="font-size:15px;letter-spacing:3px;color:var(--a);font-weight:bold;background:var(--s2);padding:12px;border-radius:10px;line-height:2.4;word-break:break-all">${hint}</div>
+<textarea class="ta" id="iniTa" placeholder="Escreva a oração completa aqui..." rows="5" style="margin-top:10px"></textarea>
+<button class="btn btn-p" onclick="checkIniciais(${JSON.stringify(text)},${prayer.id})" style="margin-top:10px">Verificar</button>`;
+}
+
+function checkIniciais(correct, prayerId){
+  const val = document.getElementById('iniTa').value.trim();
+  const sim = similarity(val, correct);
+  const ok = sim >= 0.6;
+  toast(ok?`✓ ${Math.round(sim*100)}% correto! Excelente!`:`${Math.round(sim*100)}% — continue praticando!`, ok?'ok':'bad');
+  recordResult(prayerId, ok);
+  setTimeout(()=>{ EX.idx++; nextExercise(); }, 2000);
+}
+
+// ─── IDENTIFICAR ─────────────────────────────────
+function identificar(pg, hdr, prayer){
+  const sentences = prayer.text.split(/(?<=[.!?])\s+/);
+  const excerpt = sentences[Math.floor(Math.random()*sentences.length)];
+  const wrongs = shuffleArr(PRAYERS.filter(p=>p.id!==prayer.id)).slice(0,3).map(p=>p.title);
+  const options = shuffleArr([prayer.title,...wrongs]);
+
+  pg.innerHTML = hdr + `
+<div class="exhdr">
+  <div class="extype">🔍 Identifique a Oração</div>
+  <div class="extit">A qual oração pertence este trecho?</div>
+  <div class="extip">Reconheça a oração pelo conteúdo</div>
+</div>
+<div class="ptxt" style="font-style:italic">"${excerpt}"</div>
+<div class="cg">
+${options.map(opt=>`<div class="cb" onclick="checkIdentificar(this,'${escQ(opt)}','${escQ(prayer.title)}',${prayer.id})">${opt}</div>`).join('')}
+</div>`;
+}
+
+function checkIdentificar(el, chosen, correct, prayerId){
+  if(el.style.pointerEvents==='none') return;
+  document.querySelectorAll('.cb').forEach(b=>b.style.pointerEvents='none');
+  const ok = chosen===correct;
+  el.classList.add(ok?'ok2':'bad');
+  if(!ok) document.querySelectorAll('.cb').forEach(b=>{ if(b.textContent.trim()===correct) b.classList.add('ok2'); });
+  recordResult(prayerId, ok);
+  setTimeout(()=>{ EX.idx++; nextExercise(); }, 1200);
+}
+
+// ─── PAREAR ──────────────────────────────────────
+function parear(pg, hdr, prayer){
+  const others = shuffleArr(PRAYERS.filter(p=>p.id!==prayer.id)).slice(0,3);
+  const group = shuffleArr([prayer,...others]);
+  const titles = shuffleArr(group.map(p=>({id:p.id,text:p.title})));
+  const openings = shuffleArr(group.map(p=>({id:p.id,text:p.text.split(' ').slice(0,7).join(' ')+'…'})));
+
+  window._parear = { matched:new Set(), group, prayerId:prayer.id, selected:null };
+
+  pg.innerHTML = hdr + `
+<div class="exhdr">
+  <div class="extype">🔗 Conecte os Pares</div>
+  <div class="extit">Título → Início da oração</div>
+  <div class="extip">Toque um título e depois o início correspondente</div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
+  <div id="par-titles">${titles.map(t=>`<div class="wc" id="par-t-${t.id}" onclick="parearTap('t',${t.id},this)" style="margin-bottom:8px;padding:10px;font-size:12px;text-align:center;cursor:pointer">${t.text}</div>`).join('')}</div>
+  <div id="par-openings">${openings.map(o=>`<div class="wc" id="par-o-${o.id}" onclick="parearTap('o',${o.id},this)" style="margin-bottom:8px;padding:10px;font-size:11px;color:var(--tm);text-align:center;cursor:pointer">${o.text}</div>`).join('')}</div>
+</div>`;
+}
+
+function parearTap(side, id, el){
+  const P = window._parear;
+  if(!P || P.matched.has(id)) return;
+  if(!P.selected){
+    P.selected = {side, id, el};
+    el.style.borderColor='var(--a)'; el.style.background='rgba(227,179,65,0.2)';
+  } else {
+    const prev = P.selected; P.selected = null;
+    if(prev.side === side){
+      prev.el.style.borderColor=''; prev.el.style.background='';
+      P.selected = {side, id, el};
+      el.style.borderColor='var(--a)'; el.style.background='rgba(227,179,65,0.2)';
+      return;
+    }
+    const ok = prev.id === id;
+    if(ok){
+      [prev.el, el].forEach(e=>{ e.style.borderColor='var(--ok)'; e.style.background='rgba(86,211,100,0.15)'; e.onclick=null; });
+      P.matched.add(id);
+      if(P.matched.size >= P.group.length){
+        toast('🎉 Todos os pares encontrados!','ok');
+        recordResult(P.prayerId, true, 5);
+        setTimeout(()=>{ EX.idx++; nextExercise(); }, 1500);
+      }
+    } else {
+      [prev.el, el].forEach(e=>{ e.style.borderColor='var(--err)'; e.style.background='rgba(248,81,73,0.15)'; });
+      setTimeout(()=>{ [prev.el, el].forEach(e=>{ e.style.borderColor=''; e.style.background=''; }); }, 800);
+    }
+  }
+}
+
+// ─── ECO ─────────────────────────────────────────
+function eco(pg, hdr, prayer){
+  const text = prayer.text.split(/(?<=[.!?])\s+/).slice(0,3).join(' ');
+  const readTime = Math.max(6, Math.min(15, Math.floor(text.split(' ').length/2)));
+
+  pg.innerHTML = hdr + `
+<div class="exhdr">
+  <div class="extype">🧠 Memória Eco</div>
+  <div class="extit">${prayer.title}</div>
+  <div class="extip">Leia com atenção — o texto vai desaparecer!</div>
+</div>
+<div id="ecoText" class="ptxt">${text}</div>
+<div class="psrc">— ${prayer.src}</div>
+<div id="ecoTimer" style="text-align:center;font-size:28px;font-weight:bold;color:var(--a);margin:8px 0">${readTime}s</div>
+<div id="ecoInput" style="display:none">
+  <div style="color:var(--tm);font-size:13px;margin-bottom:8px">Reproduza o que você memorizou:</div>
+  <textarea class="ta" id="ecoTa" placeholder="Escreva a oração de memória..." rows="5"></textarea>
+  <button class="btn btn-p" onclick="checkEco(${JSON.stringify(text)},${prayer.id})" style="margin-top:10px">Verificar</button>
+</div>`;
+
+  let left = readTime;
+  const iv = setInterval(()=>{
+    left--;
+    const t = document.getElementById('ecoTimer');
+    if(!t){ clearInterval(iv); return; }
+    t.textContent = left+'s';
+    if(left <= 0){
+      clearInterval(iv);
+      const txt = document.getElementById('ecoText'); if(txt) txt.style.display='none';
+      t.style.display='none';
+      const inp = document.getElementById('ecoInput');
+      if(inp){ inp.style.display=''; const ta=document.getElementById('ecoTa'); if(ta) ta.focus(); }
+    }
+  }, 1000);
+  window._ecoInterval = iv;
+}
+
+function checkEco(correct, prayerId){
+  const val = document.getElementById('ecoTa').value.trim();
+  const sim = similarity(val, correct);
+  const ok = sim >= 0.55;
+  toast(ok?`✓ ${Math.round(sim*100)}% memorizado! Ótimo!`:`${Math.round(sim*100)}% — a memória se fortalece com prática!`, ok?'ok':'bad');
+  recordResult(prayerId, ok);
+  setTimeout(()=>{ EX.idx++; nextExercise(); }, 2000);
+}
+
 // ═══════════════════════════════════════════════════
 // PROGRESSO
 // ═══════════════════════════════════════════════════
@@ -1105,8 +1277,8 @@ function openPrayer(id){
 <div class="sep"></div>
 <div style="font-size:14px;font-weight:600;margin-bottom:10px">Praticar esta oração:</div>
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-  ${['lacunas','ordem','multipla','digitacao','flashcard','progressivo','cronometro','publico'].map(t=>{
-    const names={lacunas:'✏️ Lacunas',ordem:'🔀 Ordenar',multipla:'🎯 Múltipla',digitacao:'⌨️ Digitar',flashcard:'🃏 Flashcard',progressivo:'👁️ Progressivo',cronometro:'⏱️ Cronômetro',publico:'🎤 Público'};
+  ${['lacunas','ordem','multipla','digitacao','flashcard','progressivo','cronometro','publico','iniciais','identificar','parear','eco'].map(t=>{
+    const names={lacunas:'✏️ Lacunas',ordem:'🔀 Ordenar',multipla:'🎯 Múltipla',digitacao:'⌨️ Digitar',flashcard:'🃏 Flashcard',progressivo:'👁️ Progressivo',cronometro:'⏱️ Cronômetro',publico:'🎤 Público',iniciais:'🔤 Iniciais',identificar:'🔍 Identificar',parear:'🔗 Parear',eco:'🧠 Eco'};
     return `<button class="btn btn-s" style="font-size:13px;padding:10px" onclick="practiceOne(${id},'${t}')">${names[t]}</button>`;
   }).join('')}
 </div>`;
