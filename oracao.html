@@ -619,6 +619,7 @@ function nextExercise(){
   const prayer = EX.queue[EX.idx];
   const types = ['lacunas','ordem','multipla','digitacao','flashcard','progressivo','cronometro','iniciais','identificar','eco'];
   const type = EX.type === 'auto' ? types[Math.floor(Math.random()*types.length)] : EX.type;
+  EX.currentType = type;
   renderExercise(prayer, type);
 }
 
@@ -641,6 +642,31 @@ function showCompletion(){
 // ═══════════════════════════════════════════════════
 // EXERCISE RENDERERS
 // ═══════════════════════════════════════════════════
+function clearActiveTimers(){
+  if(window._cronInterval){ clearInterval(window._cronInterval); window._cronInterval=null; }
+  if(window._ecoInterval){ clearInterval(window._ecoInterval); window._ecoInterval=null; }
+  if(window._pubIv){ clearInterval(window._pubIv); window._pubIv=null; }
+}
+
+function retryExercise(){
+  clearActiveTimers();
+  renderExercise(EX.queue[EX.idx], EX.currentType);
+}
+
+function continueExercise(){
+  clearActiveTimers();
+  EX.idx++;
+  nextExercise();
+}
+
+function showRetryButtons(){
+  document.querySelectorAll('#pgEx button').forEach(b=>{ b.disabled=true; b.style.opacity='0.45'; b.style.pointerEvents='none'; });
+  const div=document.createElement('div');
+  div.style.cssText='display:flex;gap:8px;margin-top:14px';
+  div.innerHTML=`<button class="btn btn-p" style="flex:1;opacity:1;pointer-events:auto" onclick="retryExercise()">🔁 Tentar de Novo</button><button class="btn btn-s" style="flex:1;opacity:1;pointer-events:auto" onclick="continueExercise()">→ Continuar</button>`;
+  document.getElementById('pgEx').appendChild(div);
+}
+
 function renderExercise(prayer, type){
   const pg = document.getElementById('pgEx');
   const prog = `${EX.idx+1}/${EX.queue.length}`;
@@ -694,7 +720,8 @@ function checkLacunas(indices, prayerId){
   });
   const correct = ok === indices.length;
   recordResult(prayerId, correct);
-  setTimeout(()=>{ EX.idx++; nextExercise(); }, 1200);
+  if(correct){ setTimeout(()=>{ EX.idx++; nextExercise(); }, 900); }
+  else { showRetryButtons(); }
 }
 
 // ─── ORDEM ───────────────────────────────────────
@@ -744,10 +771,11 @@ function checkOrdem(target, prayerId){
   const tgt = target.map(w=>w.toLowerCase().replace(/[.,!?;:]/g,''));
   const correct = given.length===tgt.length && given.every((w,i)=>w===tgt[i]||levenshtein(w,tgt[i])<=1);
   recordResult(prayerId, correct);
-  if(!correct){
+  if(correct){ setTimeout(()=>{ EX.idx++; nextExercise(); }, 900); }
+  else {
     document.getElementById('ordFb').innerHTML=`<div class="feedback-box bad">✗ Ordem correta: <em>${target.join(' ')}</em></div>`;
+    showRetryButtons();
   }
-  setTimeout(()=>{ EX.idx++; nextExercise(); }, correct?1000:2500);
 }
 
 // ─── MÚLTIPLA ESCOLHA ────────────────────────────
@@ -783,7 +811,8 @@ function checkMultipla(el, chosen, correct, prayerId){
   el.classList.add(ok?'ok2':'bad');
   if(!ok) document.querySelectorAll('.cb').forEach(b=>{ if(b.textContent.trim()===correct) b.classList.add('ok2'); });
   recordResult(prayerId, ok);
-  setTimeout(()=>{ EX.idx++; nextExercise(); }, 1200);
+  if(ok){ setTimeout(()=>{ EX.idx++; nextExercise(); }, 900); }
+  else { showRetryButtons(); }
 }
 
 // ─── DIGITAÇÃO ───────────────────────────────────
@@ -817,13 +846,19 @@ function checkDigitacao(correct, prayerId){
     if(!gw) return `<span class="mis">[${w}]</span>`;
     return `<span class="bad">${gw}</span> <span class="mis">[${w}]</span>`;
   }).join(' ');
-  document.getElementById('digTa').style.display='none';
+  const ta = document.getElementById('digTa');
+  ta.style.display='none';
   const el = document.createElement('div');
   el.className='type-diff ptxt'; el.innerHTML=diff;
-  document.getElementById('digTa').parentNode.insertBefore(el, document.getElementById('digTa'));
-  toast(ok?`✓ ${Math.round(sim*100)}% correto! Ótimo!`:`${Math.round(sim*100)}% — Continue praticando!`, ok?'ok':'bad');
+  ta.parentNode.insertBefore(el, ta);
+  const pct = Math.round(sim*100);
+  const fb = document.createElement('div');
+  fb.className=`feedback-box ${ok?'ok':'bad'}`;
+  fb.textContent = ok ? `✓ ${pct}% correto! Ótimo!` : `✗ ${pct}% — veja o que errou acima`;
+  ta.parentNode.insertBefore(fb, ta);
   recordResult(prayerId, ok);
-  setTimeout(()=>{ EX.idx++; nextExercise(); }, 2500);
+  if(ok){ setTimeout(()=>{ EX.idx++; nextExercise(); }, 1200); }
+  else { showRetryButtons(); }
 }
 
 // ─── FLASHCARD ───────────────────────────────────
@@ -940,9 +975,11 @@ function finishCron(prayerId){
   const sim=prayer?similarity(val,prayer.text):0;
   const ok=sim>=0.5;
   if(ta) ta.disabled=true;
-  document.getElementById('cronFb').innerHTML=`<div class="feedback-box ${ok?'ok':'bad'}">${ok?'✓ Parabéns! '+Math.round(sim*100)+'% de precisão!':'⏰ Tempo! '+Math.round(sim*100)+'% — continue praticando!'}</div>`;
+  document.getElementById('cronFb').innerHTML=`<div class="feedback-box ${ok?'ok':'bad'}">${ok?'✓ Parabéns! '+Math.round(sim*100)+'% de precisão!':'⏰ Tempo! '+Math.round(sim*100)+'% — veja o texto abaixo'}</div>`;
+  if(!ok && ta){ const orig=PRAYERS.find(p=>p.id===prayerId); if(orig){ const show=document.createElement('div'); show.className='feedback-box bad'; show.style.fontSize='13px'; show.textContent='Texto: '+orig.text.slice(0,120)+'…'; document.getElementById('cronFb').appendChild(show); } }
   recordResult(prayerId, ok);
-  setTimeout(()=>{ EX.idx++; nextExercise(); }, 2500);
+  if(ok){ setTimeout(()=>{ EX.idx++; nextExercise(); }, 1200); }
+  else { showRetryButtons(); }
 }
 
 // ─── ORAÇÃO PÚBLICA ──────────────────────────────
@@ -1018,9 +1055,14 @@ function checkIniciais(correct, prayerId){
   const val = document.getElementById('iniTa').value.trim();
   const sim = similarity(val, correct);
   const ok = sim >= 0.6;
-  toast(ok?`✓ ${Math.round(sim*100)}% correto! Excelente!`:`${Math.round(sim*100)}% — continue praticando!`, ok?'ok':'bad');
+  const pct = Math.round(sim*100);
+  const fb = document.createElement('div');
+  fb.className=`feedback-box ${ok?'ok':'bad'}`;
+  fb.innerHTML = ok ? `✓ ${pct}% correto! Excelente!` : `✗ ${pct}% — Texto correto:<br><em style="font-size:12px">${correct}</em>`;
+  document.getElementById('pgEx').appendChild(fb);
   recordResult(prayerId, ok);
-  setTimeout(()=>{ EX.idx++; nextExercise(); }, 2000);
+  if(ok){ setTimeout(()=>{ EX.idx++; nextExercise(); }, 1200); }
+  else { showRetryButtons(); }
 }
 
 // ─── IDENTIFICAR ─────────────────────────────────
@@ -1049,7 +1091,8 @@ function checkIdentificar(el, chosen, correct, prayerId){
   el.classList.add(ok?'ok2':'bad');
   if(!ok) document.querySelectorAll('.cb').forEach(b=>{ if(b.textContent.trim()===correct) b.classList.add('ok2'); });
   recordResult(prayerId, ok);
-  setTimeout(()=>{ EX.idx++; nextExercise(); }, 1200);
+  if(ok){ setTimeout(()=>{ EX.idx++; nextExercise(); }, 900); }
+  else { showRetryButtons(); }
 }
 
 // ─── PAREAR ──────────────────────────────────────
@@ -1144,9 +1187,15 @@ function checkEco(correct, prayerId){
   const val = document.getElementById('ecoTa').value.trim();
   const sim = similarity(val, correct);
   const ok = sim >= 0.55;
-  toast(ok?`✓ ${Math.round(sim*100)}% memorizado! Ótimo!`:`${Math.round(sim*100)}% — a memória se fortalece com prática!`, ok?'ok':'bad');
+  const pct = Math.round(sim*100);
+  document.getElementById('ecoTa').style.display='none';
+  const fb = document.createElement('div');
+  fb.className=`feedback-box ${ok?'ok':'bad'}`;
+  fb.innerHTML = ok ? `✓ ${pct}% memorizado! Ótimo!` : `✗ ${pct}% — Texto completo:<br><em style="font-size:12px">${correct}</em>`;
+  document.getElementById('pgEx').appendChild(fb);
   recordResult(prayerId, ok);
-  setTimeout(()=>{ EX.idx++; nextExercise(); }, 2000);
+  if(ok){ setTimeout(()=>{ EX.idx++; nextExercise(); }, 1200); }
+  else { showRetryButtons(); }
 }
 
 // ═══════════════════════════════════════════════════
