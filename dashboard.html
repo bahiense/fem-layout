@@ -135,8 +135,49 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 /* Upload compact strip */
 .upload-strip{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:0.8rem;color:var(--muted)}
 
+/* Hoje card */
+.hoje-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 20px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.hoje-main{flex:1;min-width:140px}
+.hoje-label{font-size:0.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px}
+.hoje-value{font-size:2rem;font-weight:700;line-height:1.1}
+.hoje-sub{font-size:0.78rem;color:var(--muted);margin-top:4px}
+.hoje-divider{width:1px;height:48px;background:var(--border)}
+.hoje-extra{font-size:0.82rem;color:var(--muted)}
+.hoje-extra strong{color:var(--text)}
+
+/* Sparkline semanas */
+.sparkline-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px}
+.sparkline-title{font-size:0.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:14px}
+.sparkline{display:flex;align-items:flex-end;gap:6px;height:64px}
+.spark-col{display:flex;flex-direction:column;align-items:center;flex:1;gap:4px;height:100%}
+.spark-bar-wrap{flex:1;width:100%;display:flex;align-items:flex-end}
+.spark-bar{width:100%;border-radius:3px 3px 0 0;transition:height .4s;min-height:2px}
+.spark-lbl{font-size:0.6rem;color:var(--muted);white-space:nowrap}
+.spark-val{font-size:0.62rem;color:var(--muted);font-weight:600}
+
+/* Projeção */
+.proj-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px}
+.proj-title{font-size:0.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:12px}
+.proj-body{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.proj-num{font-size:1.6rem;font-weight:700}
+.proj-detail{font-size:0.8rem;color:var(--muted);line-height:1.6}
+.proj-detail strong{color:var(--text)}
+
+/* Abonos list */
+.abonos-list{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.abonos-list-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.abonos-list-header h4{font-size:0.82rem;font-weight:600}
+.abono-item{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;font-size:0.8rem}
+.abono-item:last-child{border-bottom:none}
+.abono-date{color:var(--muted);min-width:90px}
+.abono-pts{color:var(--purple);font-weight:700;min-width:60px}
+.abono-reason{color:var(--muted);flex:1;font-size:0.75rem}
+.abono-edit{color:var(--blue);cursor:pointer;font-size:0.75rem;background:none;border:none;font-family:inherit;padding:2px 6px;border-radius:4px}
+.abono-edit:hover{background:rgba(88,166,255,.1)}
+
 /* Misc */
 .c-green{color:var(--green)}.c-red{color:var(--red)}.c-yellow{color:var(--yellow)}.c-blue{color:var(--blue)}.c-purple{color:var(--purple)}
+@media(max-width:640px){#hoje-spark-row{grid-template-columns:1fr!important}}
 @media(max-width:600px){.day-cards{grid-template-columns:repeat(5,1fr)}.dc-pts{font-size:1rem}.day-card{padding:8px 4px}}
 @media(max-width:400px){.day-cards{grid-template-columns:repeat(3,1fr)}}
 </style>
@@ -205,6 +246,12 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
   <div class="sec-label">Semana Atual</div>
   <div id="week-hero"></div>
 
+  <!-- Hoje + Sparkline -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px" id="hoje-spark-row">
+    <div id="hoje-card"></div>
+    <div id="sparkline-section"></div>
+  </div>
+
   <!-- Semanas Anteriores -->
   <div class="sec-label" id="past-label" style="display:none">Semanas Anteriores</div>
   <div class="weeks-list" id="past-weeks"></div>
@@ -214,6 +261,14 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
   <div class="month-strip" id="month-strip"></div>
   <div id="progress-section"></div>
   <div id="alerta-section"></div>
+
+  <!-- Projeção -->
+  <div class="sec-label">Projeção</div>
+  <div id="proj-section"></div>
+
+  <!-- Abonos do mês -->
+  <div class="sec-label" id="abonos-label" style="display:none">Abonos Registrados</div>
+  <div id="abonos-section"></div>
 
   <!-- Dados -->
   <div class="sec-label">Dados & Backup</div>
@@ -514,8 +569,12 @@ function renderDashboard(){
   var curWeek=weeks.find(function(w){return dk(w.monday)===curMondayKey;})||{monday:curMonday,days:[]};
   
   renderWeekHero(curWeek,today,cfg,abonos);
+  renderHojeCard(curWeek,today,cfg,abonos);
+  renderSparkline(weeks,cfg,abonos,curMondayKey);
   renderPastWeeks(pastWeeks,cfg,abonos);
   renderMonthSummary(today,cfg,abonos);
+  renderProjection(today,cfg,abonos);
+  renderAbonosList(abonos);
   renderDataPanel();
 }
 
@@ -621,6 +680,111 @@ function renderWeekHero(week,today,cfg,abonos){
   document.getElementById('week-hero').innerHTML=html;
 }
 
+// ==================== HOJE CARD ====================
+function renderHojeCard(curWeek,today,cfg,abonos){
+  var el=document.getElementById('hoje-card');
+  var dow=today.getDay();
+  // If weekend, hide
+  if(dow===0||dow===6){el.innerHTML='';return;}
+
+  // What we need today: compute week deficit redistributed
+  var monday=curWeek.monday;
+  var dateMap={};
+  curWeek.days.forEach(function(d){dateMap[d.date]=d;});
+
+  // Sum past days (not today) effective pts and expected
+  var pastPts=0,pastExp=0,futureDays=0;
+  for(var i=0;i<5;i++){
+    var d=new Date(monday);d.setDate(monday.getDate()+i);
+    var key=dk(d);
+    var isToday=dk(d)===dk(today);
+    var isFut=d>today;
+    var rec=dateMap[key]||null;
+    var isFeriado=rec&&rec.feriado;
+    if(isFeriado)continue;
+    var eff=rec?effectivePts(key,rec.pontuacao):0;
+    var target=rec&&rec.metaDiaria>0?rec.metaDiaria:cfg.weekMetaDia;
+    if(!isFut&&!isToday){pastPts+=eff;pastExp+=target;}
+    if(isFut||isToday)futureDays++;
+  }
+
+  var weekDeficit=pastExp-pastPts;
+  // Need today = base + extra to recover deficit
+  var todayKey=dk(today);
+  var todayRec=dateMap[todayKey]||null;
+  var todayBase=todayRec&&todayRec.metaDiaria>0?todayRec.metaDiaria:cfg.weekMetaDia;
+  var todayAbono=(abonos[todayKey]||{}).points||0;
+  var todayPts=todayRec?todayRec.pontuacao:0;
+  var todayEff=todayPts+todayAbono;
+  var extraToday=futureDays>0?weekDeficit/futureDays:weekDeficit;
+  var needToday=Math.max(0,todayBase+extraToday-todayEff);
+
+  var col=needToday<=0?'var(--green)':needToday<=todayBase?'var(--yellow)':'var(--red)';
+  var msg=needToday<=0?'Meta do dia cumprida!':'ainda faltam';
+
+  var html='<div class="hoje-card">';
+  html+='<div class="hoje-main">';
+  html+='<div class="hoje-label">📍 Necessário hoje</div>';
+  html+='<div class="hoje-value" style="color:'+col+'">'+(needToday<=0?'✓':fmt(needToday)+' pts')+'</div>';
+  html+='<div class="hoje-sub">'+msg+(needToday>0?' para fechar a semana no azul':'')+'</div>';
+  html+='</div>';
+
+  if(todayEff>0||todayAbono>0){
+    html+='<div class="hoje-divider"></div>';
+    html+='<div class="hoje-extra">';
+    html+='Feito hoje: <strong style="color:var(--text)">'+fmt(todayEff)+'</strong> pts<br>';
+    if(todayAbono>0)html+='<span style="color:var(--purple)">(+'+fmt(todayAbono)+' abonados)</span><br>';
+    html+='Meta base: <strong>'+fmt(todayBase)+'</strong> pts';
+    html+='</div>';
+  }
+
+  if(weekDeficit>0.5&&futureDays>1){
+    html+='<div style="width:100%;font-size:0.72rem;color:var(--yellow);margin-top:4px;padding-top:8px;border-top:1px solid var(--border)">⚡ Inclui recuperação de '+fmt(weekDeficit)+' pts atrasados desta semana distribuídos em '+futureDays+' dias</div>';
+  }
+
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+// ==================== SPARKLINE ====================
+function renderSparkline(weeks,cfg,abonos,curMondayKey){
+  var el=document.getElementById('sparkline-section');
+  if(weeks.length<2){el.innerHTML='';return;}
+
+  var data=weeks.map(function(w){
+    var monday=w.monday;
+    var friday=new Date(monday);friday.setDate(monday.getDate()+4);
+    var pts=0;
+    w.days.forEach(function(d){
+      if(!d.isWeekend)pts+=effectivePts(d.date,d.pontuacao);
+    });
+    var isCur=dk(monday)===curMondayKey;
+    return{label:fmtDate(monday),pts:pts,target:cfg.weekMetaSemanal,isCur:isCur};
+  });
+
+  var maxPts=Math.max.apply(null,data.map(function(d){return d.pts;}));
+  maxPts=Math.max(maxPts,cfg.weekMetaSemanal)*1.05;
+
+  var html='<div class="sparkline-wrap"><div class="sparkline-title">Evolução Semanal</div><div class="sparkline">';
+  data.forEach(function(w){
+    var pct=maxPts>0?(w.pts/maxPts*100):0;
+    var fillC=w.pts>=w.target*0.99?'var(--green)':w.pts>=w.target*0.6?'var(--yellow)':'var(--red)';
+    if(w.isCur)fillC='var(--blue)';
+    var opacity=w.isCur?'1':'0.7';
+    html+='<div class="spark-col">';
+    html+='<div class="spark-val">'+(w.pts>0?fmt(w.pts):'')+'</div>';
+    html+='<div class="spark-bar-wrap"><div class="spark-bar" style="height:'+pct+'%;background:'+fillC+';opacity:'+opacity+'"></div></div>';
+    html+='<div class="spark-lbl">'+w.label+(w.isCur?' ◆':'')+'</div>';
+    html+='</div>';
+  });
+  // target line note
+  html+='</div>';
+  var tPct=maxPts>0?(cfg.weekMetaSemanal/maxPts*100):0;
+  html+='<div style="font-size:0.68rem;color:var(--muted);margin-top:6px">◆ Semana atual &nbsp;·&nbsp; Meta: '+fmt(cfg.weekMetaSemanal)+' pts</div>';
+  html+='</div>';
+  el.innerHTML=html;
+}
+
 // ==================== PAST WEEKS ====================
 function renderPastWeeks(pastWeeks,cfg,abonos){
   var label=document.getElementById('past-label');
@@ -708,6 +872,77 @@ function renderMonthSummary(today,cfg,abonos){
   if(deficit<-0.5)alertHtml='<div class="alert-strip ok">🏆 Adiantado! Folga de <strong>'+fmt(Math.abs(deficit))+' pts</strong>. Basta fazer <strong>'+fmt(metaNec)+'</strong> pts/dia.</div>';
   else if(deficit>1)alertHtml='<div class="alert-strip warn">⚠ Atrasado <strong>'+fmt(deficit)+' pts</strong> em relação ao esperado até hoje.</div>';
   document.getElementById('alerta-section').innerHTML=alertHtml;
+}
+
+// ==================== PROJEÇÃO ====================
+function renderProjection(today,cfg,abonos){
+  var daily=appState.dailyData;
+  var pastPts=0,pastDias=0,futureDias=0;
+  var metaLiq=(appState.metaLiquida||0)-cfg.extraDeducoes;
+
+  daily.forEach(function(d){
+    var date=parseDate(d.date);
+    if(!d.isWeekend&&!d.feriado){
+      if(date<=today){pastPts+=effectivePts(d.date,d.pontuacao);pastDias++;}
+      else futureDias++;
+    }
+  });
+
+  var mediaDiaria=pastDias>0?pastPts/pastDias:cfg.weekMetaDia;
+  var projecao=pastPts+(mediaDiaria*futureDias);
+  var projecaoPct=metaLiq>0?(projecao/metaLiq*100):0;
+  var falta=metaLiq-projecao;
+  var necParaMeta=futureDias>0?(metaLiq-pastPts)/futureDias:0;
+
+  var col=projecao>=metaLiq*0.99?'var(--green)':projecao>=metaLiq*0.85?'var(--yellow)':'var(--red)';
+  var msg=projecao>=metaLiq*0.99?'✓ No ritmo atual você atingirá a meta!':
+           projecao>=metaLiq*0.85?'⚡ Precisa acelerar um pouco para bater a meta.':
+           '⚠ No ritmo atual você não atingirá a meta do mês.';
+
+  var html='<div class="proj-card">';
+  html+='<div class="proj-title">Projeção ao Final do Mês</div>';
+  html+='<div class="proj-body">';
+  html+='<div class="proj-num" style="color:'+col+'">'+fmt(projecaoPct)+'%</div>';
+  html+='<div class="proj-detail">';
+  html+='Projeção: <strong>'+fmt(projecao)+'</strong> pts de <strong>'+fmt(metaLiq)+'</strong><br>';
+  html+='Média atual: <strong>'+fmt(mediaDiaria)+'</strong> pts/dia ('+pastDias+' dias)<br>';
+  if(falta>0)html+='Para bater a meta: <strong style="color:var(--yellow)">'+fmt(necParaMeta)+'</strong> pts/dia nos '+futureDias+' dias restantes<br>';
+  html+='<span style="color:'+(projecao>=metaLiq?'var(--green)':'var(--yellow)')+'">'+msg+'</span>';
+  html+='</div></div></div>';
+
+  document.getElementById('proj-section').innerHTML=html;
+}
+
+// ==================== ABONOS LIST ====================
+function renderAbonosList(abonos){
+  var label=document.getElementById('abonos-label');
+  var sec=document.getElementById('abonos-section');
+  var keys=Object.keys(abonos||{}).sort();
+  if(!keys.length){label.style.display='none';sec.innerHTML='';return;}
+  label.style.display='block';
+
+  var DAYS=['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
+  var html='<div class="abonos-list">';
+  html+='<div class="abonos-list-header"><h4>'+keys.length+' abono(s) registrado(s)</h4><span style="font-size:0.72rem;color:var(--muted)">Clique no dia na semana para editar</span></div>';
+
+  var total=0;
+  keys.forEach(function(key){
+    var ab=abonos[key];
+    var date=parseDate(key);
+    total+=ab.points;
+    html+='<div class="abono-item">';
+    html+='<span class="abono-date">'+DAYS[date.getDay()]+', '+fmtDate(date)+'/'+date.getFullYear()+'</span>';
+    html+='<span class="abono-pts">+'+fmt(ab.points)+' pts</span>';
+    html+='<span class="abono-reason">'+(ab.reason||'—')+'</span>';
+    html+='</div>';
+  });
+  html+='<div class="abono-item" style="border-top:1px solid var(--border);background:rgba(163,113,247,.05)">';
+  html+='<span class="abono-date" style="color:var(--muted)">Total</span>';
+  html+='<span class="abono-pts">+'+fmt(total)+' pts</span>';
+  html+='<span class="abono-reason" style="font-size:0.72rem;color:var(--muted)">Pendente de homologação pelo sistema SGP</span>';
+  html+='</div>';
+  html+='</div>';
+  sec.innerHTML=html;
 }
 
 // ==================== DATA PANEL ====================
