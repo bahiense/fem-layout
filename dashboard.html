@@ -62,7 +62,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .wh-status.miss{background:rgba(248,81,73,.12);color:var(--red);border:1px solid rgba(248,81,73,.3)}
 .wh-status.future{background:rgba(125,133,144,.1);color:var(--muted);border:1px solid var(--border)}
 .wh-body{padding:16px 20px}
-.day-cards{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.day-cards{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
 .day-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 8px;text-align:center;position:relative;transition:border-color .15s}
 .day-card.clickable{cursor:pointer}
 .day-card.clickable:hover{border-color:var(--blue)}
@@ -178,8 +178,8 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 /* Misc */
 .c-green{color:var(--green)}.c-red{color:var(--red)}.c-yellow{color:var(--yellow)}.c-blue{color:var(--blue)}.c-purple{color:var(--purple)}
 @media(max-width:640px){#hoje-spark-row{grid-template-columns:1fr!important}}
-@media(max-width:600px){.day-cards{grid-template-columns:repeat(5,1fr)}.dc-pts{font-size:1rem}.day-card{padding:8px 4px}}
-@media(max-width:400px){.day-cards{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:600px){.day-cards{grid-template-columns:repeat(7,1fr)}.dc-pts{font-size:0.9rem}.day-card{padding:8px 3px}.dc-name{font-size:0.58rem}}
+@media(max-width:420px){.day-cards{grid-template-columns:repeat(4,1fr)}}
 </style>
 </head>
 <body>
@@ -226,8 +226,8 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
   <div class="sec-label" style="margin-top:0">Configuração de Metas</div>
   <div class="config-strip">
     <strong>Metas:</strong>
-    <label>Dia útil: <input type="number" class="cfg-input" id="cfg-dia" value="4.27" step="0.01" min="0" onchange="onCfgChange()"> pts</label>
-    <label>Semana: <input type="number" class="cfg-input" id="cfg-semana" value="27.75" step="0.01" min="0" onchange="onCfgChange()"> pts</label>
+    <label>Dia útil (Seg–Sex): <input type="number" class="cfg-input" id="cfg-dia" value="4.27" step="0.01" min="0" onchange="onCfgChange()"> pts</label>
+    <label>Meta Semanal (Seg–Dom): <input type="number" class="cfg-input" id="cfg-semana" value="27.75" step="0.01" min="0" onchange="onCfgChange()"> pts</label>
     <span id="cfg-hint" style="font-size:0.72rem;color:var(--muted)"></span>
     <label style="margin-left:auto">Deduções extras: <input type="number" class="cfg-input" id="cfg-deducoes" value="0" step="0.01" min="0" onchange="onCfgChange()"> pts</label>
   </div>
@@ -481,9 +481,16 @@ function mergeExcelData(rows){
 
 // ==================== CONFIG ====================
 function getCfg(){
+  var weekMetaDia=parseFloat(document.getElementById('cfg-dia').value)||4.27;
+  var weekMetaSemanal=parseFloat(document.getElementById('cfg-semana').value)||27.75;
+  // Weekend target = what's left after 5 weekdays, split by 2
+  var weekMetaFds=(weekMetaSemanal-weekMetaDia*5)/2;
+  var hint=document.getElementById('cfg-hint');
+  if(hint)hint.textContent='Sab/Dom: '+fmt(weekMetaFds)+' pts cada';
   return {
-    weekMetaDia:parseFloat(document.getElementById('cfg-dia').value)||4.27,
-    weekMetaSemanal:parseFloat(document.getElementById('cfg-semana').value)||27.75,
+    weekMetaDia:weekMetaDia,
+    weekMetaSemanal:weekMetaSemanal,
+    weekMetaFds:weekMetaFds,
     extraDeducoes:parseFloat(document.getElementById('cfg-deducoes').value)||0
   };
 }
@@ -579,103 +586,135 @@ function renderDashboard(){
 }
 
 // ==================== WEEK HERO ====================
+// Semana Seg–Dom com redistribuição dinâmica de meta
 function renderWeekHero(week,today,cfg,abonos){
   var monday=week.monday;
-  // Build 5 day slots (Mon-Fri)
-  var days5=[];
-  for(var i=0;i<5;i++){
+  var sunday=new Date(monday);sunday.setDate(monday.getDate()+6);
+  var label='Semana de '+fmtDate(monday)+' a '+fmtDate(sunday);
+  var weekTarget=cfg.weekMetaSemanal;
+  var DAYS=['Seg','Ter','Qua','Qui','Sex','Sab','Dom'];
+
+  // Build 7 day slots
+  var slots=[];
+  for(var i=0;i<7;i++){
     var d=new Date(monday);d.setDate(monday.getDate()+i);
     var key=dk(d);
     var found=week.days.find(function(x){return x.date===key;})||null;
     var abono=abonos[key]||null;
-    days5.push({date:d,key:key,data:found,abono:abono});
+    var isWeekend=(i>=5);
+    var isFeriado=found&&found.feriado;
+    // base target: 0 for feriado, weekMetaFds for weekend, weekMetaDia for weekdays
+    var baseTarget=isFeriado?0:(isWeekend?cfg.weekMetaFds:cfg.weekMetaDia);
+    slots.push({date:d,key:key,data:found,abono:abono,isWeekend:isWeekend,isFeriado:isFeriado,baseTarget:baseTarget,idx:i});
   }
-  
-  var weekEnd=new Date(monday);weekEnd.setDate(monday.getDate()+4);
-  var label='Semana de '+fmtDate(monday)+' a '+fmtDate(weekEnd);
-  
-  // Compute week totals (only past+today days with meta)
-  var weekPts=0,weekExpected=0,weekTarget=cfg.weekMetaSemanal;
+
+  // --- Dynamic target redistribution ---
+  // Sum pts from days strictly BEFORE today (completed days)
+  var pastPts=0;
+  slots.forEach(function(s){
+    if(s.date<today&&!s.isFeriado){
+      pastPts+=s.data?effectivePts(s.key,s.data.pontuacao):(s.abono?s.abono.points:0);
+    }
+  });
+  // Remaining meta = weekTarget - pastPts
+  var remainingMeta=weekTarget-pastPts;
+  // Count non-holiday days from today onwards (inclusive)
+  var remainingDays=slots.filter(function(s){return s.date>=today&&!s.isFeriado;}).length;
+  // Adjusted target shared equally among remaining days
+  var adjustedTarget=remainingDays>0?(remainingMeta/remainingDays):0;
+  adjustedTarget=Math.max(0,adjustedTarget);
+
+  // Week totals for progress
+  var weekPts=0,weekExpected=0;
   var hasPastDays=false;
-  days5.forEach(function(slot){
-    var isFut=slot.date>today;
-    var isFeriado=slot.data&&slot.data.feriado;
-    var effPts=slot.data?effectivePts(slot.key,slot.data.pontuacao):(slot.abono?slot.abono.points:0);
+  slots.forEach(function(s){
+    var isFut=s.date>today;
+    var effPts=s.data?effectivePts(s.key,s.data.pontuacao):(s.abono?s.abono.points:0);
     if(!isFut){
       hasPastDays=true;
       weekPts+=effPts;
-      if(slot.data&&slot.data.metaDiaria>0)weekExpected+=slot.data.metaDiaria;
-      else if(!isFeriado)weekExpected+=cfg.weekMetaDia;
+      if(!s.isFeriado)weekExpected+=s.baseTarget;
     }
   });
-  
-  // Status
+
   var weekPct=weekTarget>0?(weekPts/weekTarget*100):0;
   var statusCls,statusTxt;
   if(!hasPastDays){statusCls='future';statusTxt='Semana futura';}
-  else if(weekPts>=weekTarget*0.99){statusCls='hit';statusTxt='Meta atingida ✓';}
-  else{var def=weekExpected-weekPts;if(def>0.5){statusCls='miss';statusTxt='Atrasado '+fmt(def)+' pts';}else{statusCls='hit';statusTxt='Em dia ✓';}}
-  
+  else{
+    var def=weekExpected-weekPts;
+    if(weekPts>=weekTarget*0.99){statusCls='hit';statusTxt='Meta atingida ✓';}
+    else if(def>0.5){statusCls='miss';statusTxt='Atrasado '+fmt(def)+' pts';}
+    else{statusCls='hit';statusTxt='Em dia ✓';}
+  }
+
   var html='<div class="week-hero">';
   html+='<div class="wh-header"><span class="wh-title">'+label+'</span><span class="wh-status '+statusCls+'">'+statusTxt+'</span></div>';
   html+='<div class="wh-body"><div class="day-cards">';
-  
-  var DAYS=['Seg','Ter','Qua','Qui','Sex'];
-  days5.forEach(function(slot,i){
-    var isFut=slot.date>today;
-    var isFeriado=slot.data&&slot.data.feriado;
-    var pts=slot.data?slot.data.pontuacao:0;
-    var abono=slot.abono;
-    var effPts=effectivePts(slot.key,pts);
-    var target=slot.data&&slot.data.metaDiaria>0?slot.data.metaDiaria:cfg.weekMetaDia;
-    if(isFeriado)target=0;
-    
+
+  slots.forEach(function(s,i){
+    var isFut=s.date>today;
+    var isToday=dk(s.date)===dk(today);
+    var effPts=s.data?effectivePts(s.key,s.data.pontuacao):(s.abono?s.abono.points:0);
+    // For past days show base target; for today/future show adjusted
+    var displayTarget=isFut||isToday?adjustedTarget:s.baseTarget;
+    var isFeriado=s.isFeriado;
+
     var cls='day-card';
-    if(isFut)cls+=' future';
-    else if(isFeriado)cls+=' holiday';
-    else if(target>0){
-      if(effPts>=target*0.99)cls+=' hit';
-      else if(effPts>=target*0.5)cls+=' partial';
+    if(isFeriado)cls+=' holiday';
+    else if(isFut)cls+=' future';
+    else if(displayTarget>0){
+      if(effPts>=displayTarget*0.99)cls+=' hit';
+      else if(effPts>=displayTarget*0.5)cls+=' partial';
       else cls+=' miss';
     }
-    
+
     var clickable=!isFut&&!isFeriado;
     if(clickable)cls+=' clickable';
-    
-    var diff=isFut||isFeriado?null:(effPts-target);
-    var diffHtml=diff!==null&&target>0?'<div class="dc-diff" style="color:'+(diff>=-0.01?'var(--green)':'var(--red)')+'">'+(diff>=0?'+':'')+fmt(diff)+'</div>':'';
-    var targetHtml=isFeriado?'<div class="dc-holiday-label">Feriado</div>':(target>0&&!isFut?'<div class="dc-target">meta '+fmt(target)+'</div>':'<div class="dc-target">'+fmtDate(slot.date)+'</div>');
-    
-    html+='<div class="'+cls+'"'+(clickable?' onclick="openModal(\''+slot.key+'\')"':'')+'>';
-    if(abono)html+='<span class="dc-abono">Abono</span>';
-    html+='<div class="dc-name">'+DAYS[i]+'<br><span style="font-weight:400;color:var(--muted)">'+fmtDate(slot.date)+'</span></div>';
+
+    var diff=(!isFut&&!isFeriado&&displayTarget>0)?(effPts-displayTarget):null;
+    var diffHtml=diff!==null?'<div class="dc-diff" style="color:'+(diff>=-0.01?'var(--green)':'var(--red)')+'">'+(diff>=0?'+':'')+fmt(diff)+'</div>':'';
+
+    var targetLabel='';
+    if(isFeriado){targetLabel='<div class="dc-holiday-label">Feriado</div>';}
+    else if(isFut||isToday){
+      targetLabel='<div class="dc-target" style="color:var(--yellow)">meta '+fmt(adjustedTarget)+'</div>';
+    } else {
+      targetLabel='<div class="dc-target">meta '+fmt(s.baseTarget)+'</div>';
+    }
+
+    html+='<div class="'+cls+'"'+(clickable?' onclick="openModal(\''+s.key+'\')"':'')+'>';
+    if(s.abono)html+='<span class="dc-abono">Ab.</span>';
+    html+='<div class="dc-name">'+DAYS[i]+'<br><span style="font-weight:400">'+fmtDate(s.date)+'</span></div>';
     html+='<div class="dc-pts" style="color:'+(isFut?'var(--muted)':effPts>0?'var(--text)':'var(--muted)')+'">'+(isFut?'--':fmt(effPts))+'</div>';
-    html+=targetHtml+diffHtml;
-    if(abono&&!isFut)html+='<div style="font-size:0.65rem;color:var(--purple);margin-top:3px">+'+fmt(abono.points)+' ab.</div>';
+    html+=targetLabel+diffHtml;
+    if(s.abono&&!isFut)html+='<div style="font-size:0.6rem;color:var(--purple);margin-top:2px">+'+fmt(s.abono.points)+' ab.</div>';
     html+='</div>';
   });
-  
-  html+='</div>';
-  
-  // Abono total in week
+
+  html+='</div>'; // day-cards
+
+  // redistribution note
+  if(hasPastDays&&Math.abs(adjustedTarget-cfg.weekMetaDia)>0.05){
+    var diff2=adjustedTarget-cfg.weekMetaDia;
+    html+='<div style="font-size:0.72rem;color:var(--muted);margin-top:10px">⚖ Meta ajustada para os dias restantes: <strong style="color:var(--yellow)">'+fmt(adjustedTarget)+'</strong> pts/dia ('+(diff2>=0?'+':'')+fmt(diff2)+' vs base)</div>';
+  }
+
+  // Abono total
   var weekAbono=0;
-  days5.forEach(function(s){if(s.abono)weekAbono+=s.abono.points;});
-  if(weekAbono>0.01)html+='<div class="abono-note" style="margin-top:8px">Abonos na semana: +'+fmt(weekAbono)+' pts incluídos</div>';
-  
+  slots.forEach(function(s){if(s.abono)weekAbono+=s.abono.points;});
+  if(weekAbono>0.01)html+='<div class="abono-note" style="margin-top:6px">Abonos na semana: +'+fmt(weekAbono)+' pts incluídos</div>';
+
   html+='</div>'; // wh-body
-  
-  // Footer
+
   var fillColor=weekPct>=100?'var(--green)':weekPct>=60?'var(--yellow)':'var(--red)';
   html+='<div class="wh-footer">';
   html+='<div class="wh-progress-wrap">';
-  html+='<div style="display:flex;justify-content:space-between;font-size:0.78rem;color:var(--muted);margin-bottom:4px">';
-  html+='<span>Progresso da semana</span><span style="color:var(--text);font-weight:700">'+fmt(weekPct)+'%</span></div>';
+  html+='<div style="display:flex;justify-content:space-between;font-size:0.78rem;color:var(--muted);margin-bottom:4px"><span>Progresso da semana</span><span style="color:var(--text);font-weight:700">'+fmt(weekPct)+'%</span></div>';
   html+='<div class="wh-progress-bar"><div class="wh-progress-fill" style="width:'+Math.min(weekPct,100)+'%;background:'+fillColor+'"></div></div>';
   html+='</div>';
   html+='<div class="wh-stat"><strong>'+fmt(weekPts)+'</strong> / '+fmt(weekTarget)+' pts</div>';
-  html+='<div class="wh-stat">Esperado até hoje: <strong>'+fmt(weekExpected)+'</strong></div>';
+  html+='<div class="wh-stat">Esperado acum.: <strong>'+fmt(weekExpected)+'</strong></div>';
   html+='</div>';
-  
   html+='</div>'; // week-hero
   document.getElementById('week-hero').innerHTML=html;
 }
@@ -683,65 +722,57 @@ function renderWeekHero(week,today,cfg,abonos){
 // ==================== HOJE CARD ====================
 function renderHojeCard(curWeek,today,cfg,abonos){
   var el=document.getElementById('hoje-card');
-  var dow=today.getDay();
-  // If weekend, hide
-  if(dow===0||dow===6){el.innerHTML='';return;}
+  var todayKey=dk(today);
 
-  // What we need today: compute week deficit redistributed
+  // Build 7-day map
   var monday=curWeek.monday;
   var dateMap={};
   curWeek.days.forEach(function(d){dateMap[d.date]=d;});
 
-  // Sum past days (not today) effective pts and expected
-  var pastPts=0,pastExp=0,futureDays=0;
-  for(var i=0;i<5;i++){
+  // Sum pts from days strictly BEFORE today
+  var pastPts=0;
+  var remainingCount=0;
+  for(var i=0;i<7;i++){
     var d=new Date(monday);d.setDate(monday.getDate()+i);
     var key=dk(d);
-    var isToday=dk(d)===dk(today);
-    var isFut=d>today;
     var rec=dateMap[key]||null;
     var isFeriado=rec&&rec.feriado;
     if(isFeriado)continue;
-    var eff=rec?effectivePts(key,rec.pontuacao):0;
-    var target=rec&&rec.metaDiaria>0?rec.metaDiaria:cfg.weekMetaDia;
-    if(!isFut&&!isToday){pastPts+=eff;pastExp+=target;}
-    if(isFut||isToday)futureDays++;
+    if(d<today){pastPts+=rec?effectivePts(key,rec.pontuacao):0;}
+    if(d>=today)remainingCount++;
   }
 
-  var weekDeficit=pastExp-pastPts;
-  // Need today = base + extra to recover deficit
-  var todayKey=dk(today);
+  // Adjusted target for today and remaining days
+  var remainingMeta=cfg.weekMetaSemanal-pastPts;
+  var adjustedTarget=remainingCount>0?Math.max(0,remainingMeta/remainingCount):0;
+
+  // Today's current state
   var todayRec=dateMap[todayKey]||null;
-  var todayBase=todayRec&&todayRec.metaDiaria>0?todayRec.metaDiaria:cfg.weekMetaDia;
+  var isFeriado=todayRec&&todayRec.feriado;
+  if(isFeriado){el.innerHTML='';return;}
+
   var todayAbono=(abonos[todayKey]||{}).points||0;
   var todayPts=todayRec?todayRec.pontuacao:0;
   var todayEff=todayPts+todayAbono;
-  var extraToday=futureDays>0?weekDeficit/futureDays:weekDeficit;
-  var needToday=Math.max(0,todayBase+extraToday-todayEff);
+  var needToday=Math.max(0,adjustedTarget-todayEff);
+  var isWeekend=today.getDay()===0||today.getDay()===6;
+  var baseTarget=isWeekend?cfg.weekMetaFds:cfg.weekMetaDia;
 
-  var col=needToday<=0?'var(--green)':needToday<=todayBase?'var(--yellow)':'var(--red)';
-  var msg=needToday<=0?'Meta do dia cumprida!':'ainda faltam';
+  var col=needToday<=0?'var(--green)':needToday<=adjustedTarget*0.5?'var(--yellow)':'var(--red)';
 
   var html='<div class="hoje-card">';
   html+='<div class="hoje-main">';
   html+='<div class="hoje-label">📍 Necessário hoje</div>';
   html+='<div class="hoje-value" style="color:'+col+'">'+(needToday<=0?'✓':fmt(needToday)+' pts')+'</div>';
-  html+='<div class="hoje-sub">'+msg+(needToday>0?' para fechar a semana no azul':'')+'</div>';
+  html+='<div class="hoje-sub">'+(needToday<=0?'Meta do dia cumprida!':'para fechar a semana no azul')+'</div>';
   html+='</div>';
-
-  if(todayEff>0||todayAbono>0){
-    html+='<div class="hoje-divider"></div>';
-    html+='<div class="hoje-extra">';
-    html+='Feito hoje: <strong style="color:var(--text)">'+fmt(todayEff)+'</strong> pts<br>';
-    if(todayAbono>0)html+='<span style="color:var(--purple)">(+'+fmt(todayAbono)+' abonados)</span><br>';
-    html+='Meta base: <strong>'+fmt(todayBase)+'</strong> pts';
-    html+='</div>';
-  }
-
-  if(weekDeficit>0.5&&futureDays>1){
-    html+='<div style="width:100%;font-size:0.72rem;color:var(--yellow);margin-top:4px;padding-top:8px;border-top:1px solid var(--border)">⚡ Inclui recuperação de '+fmt(weekDeficit)+' pts atrasados desta semana distribuídos em '+futureDays+' dias</div>';
-  }
-
+  html+='<div class="hoje-divider"></div>';
+  html+='<div class="hoje-extra">';
+  html+='Feito hoje: <strong style="color:var(--text)">'+fmt(todayEff)+'</strong> pts<br>';
+  if(todayAbono>0)html+='<span style="color:var(--purple)">(+'+fmt(todayAbono)+' ab.)</span><br>';
+  html+='Meta ajustada: <strong style="color:var(--yellow)">'+fmt(adjustedTarget)+'</strong> pts';
+  if(Math.abs(adjustedTarget-baseTarget)>0.05)html+='<br><span style="font-size:0.7rem">(base: '+fmt(baseTarget)+')</span>';
+  html+='</div>';
   html+='</div>';
   el.innerHTML=html;
 }
@@ -800,10 +831,12 @@ function renderPastWeeks(pastWeeks,cfg,abonos){
     
     var weekPts=0,weekExpected=0,target=cfg.weekMetaSemanal;
     week.days.forEach(function(d){
-      if(!d.isWeekend){
-        weekPts+=effectivePts(d.date,d.pontuacao);
+      // Include ALL days (Seg-Dom), excluding feriados
+      weekPts+=effectivePts(d.date,d.pontuacao);
+      if(!d.feriado){
+        var isWknd=d.isWeekend;
         if(d.metaDiaria>0)weekExpected+=d.metaDiaria;
-        else if(!d.feriado)weekExpected+=cfg.weekMetaDia;
+        else weekExpected+=isWknd?cfg.weekMetaFds:cfg.weekMetaDia;
       }
     });
     
@@ -882,7 +915,7 @@ function renderProjection(today,cfg,abonos){
 
   daily.forEach(function(d){
     var date=parseDate(d.date);
-    if(!d.isWeekend&&!d.feriado){
+    if(!d.feriado){  // conta todos os dias (Seg-Dom), só exclui feriados
       if(date<=today){pastPts+=effectivePts(d.date,d.pontuacao);pastDias++;}
       else futureDias++;
     }
