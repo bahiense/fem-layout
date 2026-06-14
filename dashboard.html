@@ -340,6 +340,8 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 // ==================== STATE ====================
 var LS_KEY = 'sgp-data';
 var appState = null;  // loaded from localStorage or built from Excel
+var DAYS=['Seg','Ter','Qua','Qui','Sex','Sab','Dom'];
+var DAYS_JS=['Dom','Seg','Ter','Qua','Qui','Sex','Sab']; // JS getDay() order
 var modalDateKey = null;
 
 // ==================== UTILS ====================
@@ -596,7 +598,6 @@ function renderWeekHero(week,today,cfg,abonos){
   var sunday=new Date(monday);sunday.setDate(monday.getDate()+6);
   var label='Semana de '+fmtDate(monday)+' a '+fmtDate(sunday);
   var weekTarget=cfg.weekMetaSemanal;
-  var DAYS=['Seg','Ter','Qua','Qui','Sex','Sab','Dom'];
 
   // Build 7 day slots
   var slots=[];
@@ -1085,7 +1086,6 @@ function renderAbonosList(abonos){
   if(!keys.length){label.style.display='none';sec.innerHTML='';return;}
   label.style.display='block';
 
-  var DAYS=['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
   var html='<div class="abonos-list">';
   html+='<div class="abonos-list-header"><h4>'+keys.length+' abono(s) registrado(s)</h4><span style="font-size:0.72rem;color:var(--muted)">Clique no dia na semana para editar</span></div>';
 
@@ -1095,7 +1095,7 @@ function renderAbonosList(abonos){
     var date=parseDate(key);
     total+=ab.points;
     html+='<div class="abono-item">';
-    html+='<span class="abono-date">'+DAYS[date.getDay()]+', '+fmtDate(date)+'/'+date.getFullYear()+'</span>';
+    html+='<span class="abono-date">'+DAYS_JS[date.getDay()]+', '+fmtDate(date)+'/'+date.getFullYear()+'</span>';
     html+='<span class="abono-pts">+'+fmt(ab.points)+' pts</span>';
     html+='<span class="abono-reason">'+(ab.reason||'—')+'</span>';
     html+='</div>';
@@ -1126,8 +1126,7 @@ function renderDataPanel(){
 function openModal(key){
   modalDateKey=key;
   var date=parseDate(key);
-  var DAYS=['Dom','Seg','Ter','Qua','Qui','Sex','Sab'];
-  document.getElementById('modal-date-label').textContent=DAYS[date.getDay()]+', '+fmtDate(date)+'/'+date.getFullYear();
+  document.getElementById('modal-date-label').textContent=DAYS_JS[date.getDay()]+', '+fmtDate(date)+'/'+date.getFullYear();
   var abono=(appState.abonos||{})[key];
   document.getElementById('modal-pts').value=abono?abono.points:'';
   document.getElementById('modal-reason').value=abono?abono.reason:'';
