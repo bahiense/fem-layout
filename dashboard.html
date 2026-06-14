@@ -609,16 +609,16 @@ function renderWeekHero(week,today,cfg,abonos){
   }
 
   // --- Dynamic target redistribution ---
-  // Sum pts from days strictly BEFORE today (completed days)
+  // Sum pts from days strictly BEFORE today (ALL days including feriados - trabalho em feriado desconta da meta)
   var pastPts=0;
   slots.forEach(function(s){
-    if(s.date<today&&!s.isFeriado){
+    if(s.date<today){
       pastPts+=s.data?effectivePts(s.key,s.data.pontuacao):(s.abono?s.abono.points:0);
     }
   });
   // Remaining meta = weekTarget - pastPts
   var remainingMeta=weekTarget-pastPts;
-  // Count non-holiday days from today onwards (inclusive)
+  // Count non-holiday days from today onwards (feriados não têm obrigação, mas pontos contam se trabalhados)
   var remainingDays=slots.filter(function(s){return s.date>=today&&!s.isFeriado;}).length;
   // Adjusted target shared equally among remaining days
   var adjustedTarget=remainingDays>0?(remainingMeta/remainingDays):0;
@@ -668,14 +668,19 @@ function renderWeekHero(week,today,cfg,abonos){
       else cls+=' miss';
     }
 
-    var clickable=!isFut&&!isFeriado;
+    var clickable=!isFut; // feriados também são clicáveis para registrar trabalho/abono
     if(clickable)cls+=' clickable';
 
+    // Para feriados: diff só aparece se trabalhou (effPts > 0)
     var diff=(!isFut&&!isFeriado&&displayTarget>0)?(effPts-displayTarget):null;
     var diffHtml=diff!==null?'<div class="dc-diff" style="color:'+(diff>=-0.01?'var(--green)':'var(--red)')+'">'+(diff>=0?'+':'')+fmt(diff)+'</div>':'';
 
     var targetLabel='';
-    if(isFeriado){targetLabel='<div class="dc-holiday-label">Feriado</div>';}
+    if(isFeriado){
+      targetLabel='<div class="dc-holiday-label">Feriado</div>';
+      // Se trabalhou no feriado, mostra o bônus
+      if(effPts>0&&!isFut)diffHtml='<div class="dc-diff" style="color:var(--green)">+'+fmt(effPts)+' ✓</div>';
+    }
     else if(isFut||isToday){
       targetLabel='<div class="dc-target" style="color:var(--yellow)">meta '+fmt(adjustedTarget)+'</div>';
     } else {
@@ -729,7 +734,7 @@ function renderHojeCard(curWeek,today,cfg,abonos){
   var dateMap={};
   curWeek.days.forEach(function(d){dateMap[d.date]=d;});
 
-  // Sum pts from days strictly BEFORE today
+  // Sum pts from days strictly BEFORE today (incluindo feriados trabalhados)
   var pastPts=0;
   var remainingCount=0;
   for(var i=0;i<7;i++){
@@ -737,9 +742,9 @@ function renderHojeCard(curWeek,today,cfg,abonos){
     var key=dk(d);
     var rec=dateMap[key]||null;
     var isFeriado=rec&&rec.feriado;
-    if(isFeriado)continue;
+    // feriados contam para pastPts se trabalhados, mas não entram no remainingCount
     if(d<today){pastPts+=rec?effectivePts(key,rec.pontuacao):0;}
-    if(d>=today)remainingCount++;
+    if(d>=today&&!isFeriado)remainingCount++;
   }
 
   // Adjusted target for today and remaining days
