@@ -617,8 +617,8 @@ function renderWeekHero(week,today,cfg,abonos){
     else{totalWorkDays++;}
   });
   var effectiveWeekTarget=Math.max(0,weekTarget-exemptQuota);
-  // Meta base ajustada uniforme para cada dia de trabalho (sem sobre/sub-desempenho)
-  var adjustedBase=totalWorkDays>0?(effectiveWeekTarget/totalWorkDays):0;
+  // Meta base proporcional por tipo de dia (semana/fds), escalada pela redução efetiva
+  var scale=weekTarget>0?(effectiveWeekTarget/weekTarget):1;
 
   // pastPts: apenas pontuacao REAL do Excel
   // (abono já reduziu a meta, não entra no acumulado de pts)
@@ -647,10 +647,11 @@ function renderWeekHero(week,today,cfg,abonos){
 
   var weekPct=effectiveWeekTarget>0?(weekPts/effectiveWeekTarget*100):0;
   var statusCls,statusTxt;
+  var avgAdjustedBase=weekTarget>0?(effectiveWeekTarget/weekTarget)*((cfg.weekMetaDia*5+cfg.weekMetaFds*2)/7):0;
   if(!hasPastDays){statusCls='future';statusTxt='Semana futura';}
   else{
     if(weekPts>=effectiveWeekTarget*0.99){statusCls='hit';statusTxt='Meta atingida ✓';}
-    else if(adjustedTarget>adjustedBase*1.15){statusCls='miss';statusTxt='Atrasado — meta/dia: '+fmt(adjustedTarget)+' pts';}
+    else if(adjustedTarget>avgAdjustedBase*1.15){statusCls='miss';statusTxt='Atrasado — meta/dia: '+fmt(adjustedTarget)+' pts';}
     else{statusCls='hit';statusTxt='Em dia ✓';}
   }
 
@@ -666,6 +667,9 @@ function renderWeekHero(week,today,cfg,abonos){
     var actualPts=s.data?s.data.pontuacao:0; // pontuacao REAL do Excel
     var isFeriado=s.isFeriado;
     var isExempt=isFeriado||hasAbono;
+
+    // Meta base proporcional: escala weekMetaDia/weekMetaFds pelo fator de redução efetiva
+    var adjustedBase=s.isWeekend?(cfg.weekMetaFds*scale):(cfg.weekMetaDia*scale);
 
     // Meta exibida: adjustedBase para dias passados, adjustedTarget (dinâmico) para hoje/futuros
     var displayTarget=isExempt?0:(isFut||isToday?adjustedTarget:adjustedBase);
@@ -719,10 +723,10 @@ function renderWeekHero(week,today,cfg,abonos){
 
   // Notas de ajuste
   if(hasPastDays&&exemptQuota>0.01){
-    html+='<div style="font-size:0.72rem;color:var(--muted);margin-top:10px">⚖ Meta reduzida: <strong>'+fmt(weekTarget)+'</strong> → <strong style="color:var(--yellow)">'+fmt(effectiveWeekTarget)+'</strong> pts (-'+fmt(exemptQuota)+' isentos) · Meta/dia ajustada: <strong style="color:var(--yellow)">'+fmt(adjustedBase)+'</strong> pts</div>';
-  } else if(hasPastDays&&Math.abs(adjustedTarget-adjustedBase)>0.05){
-    var diff2=adjustedTarget-adjustedBase;
-    html+='<div style="font-size:0.72rem;color:var(--muted);margin-top:10px">⚖ Meta restante ajustada: <strong style="color:var(--yellow)">'+fmt(adjustedTarget)+'</strong> pts/dia ('+(diff2>=0?'+':'')+fmt(diff2)+' vs base '+fmt(adjustedBase)+')</div>';
+    html+='<div style="font-size:0.72rem;color:var(--muted);margin-top:10px">⚖ Meta reduzida: <strong>'+fmt(weekTarget)+'</strong> → <strong style="color:var(--yellow)">'+fmt(effectiveWeekTarget)+'</strong> pts (-'+fmt(exemptQuota)+' isentos) · Seg–Sex: <strong style="color:var(--yellow)">'+fmt(cfg.weekMetaDia*scale)+'</strong> · Sab/Dom: <strong style="color:var(--yellow)">'+fmt(cfg.weekMetaFds*scale)+'</strong> pts</div>';
+  } else if(hasPastDays&&Math.abs(adjustedTarget-avgAdjustedBase)>0.05){
+    var diff2=adjustedTarget-avgAdjustedBase;
+    html+='<div style="font-size:0.72rem;color:var(--muted);margin-top:10px">⚖ Meta restante ajustada: <strong style="color:var(--yellow)">'+fmt(adjustedTarget)+'</strong> pts/dia ('+(diff2>=0?'+':'')+fmt(diff2)+' vs base '+fmt(avgAdjustedBase)+')</div>';
   }
 
   // Chip de abonos da semana
@@ -739,7 +743,7 @@ function renderWeekHero(week,today,cfg,abonos){
   html+='<div class="wh-progress-bar"><div class="wh-progress-fill" style="width:'+Math.min(weekPct,100)+'%;background:'+fillColor+'"></div></div>';
   html+='</div>';
   html+='<div class="wh-stat"><strong>'+fmt(weekPts)+'</strong> / '+fmt(effectiveWeekTarget)+' pts'+(exemptQuota>0.01?' <span style="font-size:0.7rem;color:var(--purple)">(-'+fmt(exemptQuota)+')</span>':'')+'</div>';
-  html+='<div class="wh-stat">Meta/dia: <strong style="color:var(--yellow)">'+fmt(adjustedBase)+'</strong>'+(remainingDays>0&&Math.abs(adjustedTarget-adjustedBase)>0.05?' → hoje: <strong style="color:var(--yellow)">'+fmt(adjustedTarget)+'</strong>':'')+'</div>';
+  html+='<div class="wh-stat">Seg–Sex: <strong style="color:var(--yellow)">'+fmt(cfg.weekMetaDia*scale)+'</strong> · Sab/Dom: <strong style="color:var(--yellow)">'+fmt(cfg.weekMetaFds*scale)+'</strong>'+(remainingDays>0&&Math.abs(adjustedTarget-avgAdjustedBase)>0.05?' → hoje: <strong style="color:var(--yellow)">'+fmt(adjustedTarget)+'</strong>':'')+'</div>';
   html+='</div>';
   html+='</div>'; // week-hero
   document.getElementById('week-hero').innerHTML=html;
@@ -786,7 +790,9 @@ function renderHojeCard(curWeek,today,cfg,abonos){
     if(d>=today&&!isExempt) remainingCount++;
   }
 
-  var adjustedBase2=totalWorkCount>0?(effectiveWeekTarget2/totalWorkCount):0;
+  var scale2=cfg.weekMetaSemanal>0?(effectiveWeekTarget2/cfg.weekMetaSemanal):1;
+  var todayIsWeekend=(today.getDay()===0||today.getDay()===6);
+  var adjustedBase2=todayIsWeekend?(cfg.weekMetaFds*scale2):(cfg.weekMetaDia*scale2);
   var adjustedTarget=remainingCount>0?Math.max(0,(effectiveWeekTarget2-pastPts)/remainingCount):0;
 
   // Today's current state
