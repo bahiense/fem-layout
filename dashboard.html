@@ -526,7 +526,8 @@ function getWeeks(dailyData,abonos){
     if(!weeks[wk])weeks[wk]={monday:monday,days:[]};
     weeks[wk].days.push(d);
   });
-  var list=Object.keys(weeks).sort().map(function(k){return weeks[k];});
+  // Ordenar por data real (não por string, pois '2026-6-8' > '2026-6-29' alfabeticamente)
+  var list=Object.values(weeks).sort(function(a,b){return a.monday-b.monday;});
   return list;
 }
 
@@ -825,16 +826,20 @@ function renderSparkline(weeks,cfg,abonos,curMondayKey){
   var el=document.getElementById('sparkline-section');
   if(weeks.length<2){el.innerHTML='';return;}
 
-  var data=weeks.map(function(w){
-    var monday=w.monday;
-    var friday=new Date(monday);friday.setDate(monday.getDate()+4);
+  var today=new Date();today.setHours(0,0,0,0);
+  // Mostrar apenas semanas passadas + atual (sem semanas futuras sem dados)
+  var data=weeks.filter(function(w){
+    return w.monday<=today; // só até a semana atual
+  }).map(function(w){
     var pts=0;
     w.days.forEach(function(d){
-      if(!d.isWeekend)pts+=effectivePts(d.date,d.pontuacao);
+      var abonoPts=(abonos[d.date]&&abonos[d.date].points)||0;
+      pts+=d.pontuacao+abonoPts;
     });
-    var isCur=dk(monday)===curMondayKey;
-    return{label:fmtDate(monday),pts:pts,target:cfg.weekMetaSemanal,isCur:isCur};
+    var isCur=dk(w.monday)===curMondayKey;
+    return{label:fmtDate(w.monday),pts:pts,target:cfg.weekMetaSemanal,isCur:isCur};
   });
+  if(!data.length){el.innerHTML='';return;}
 
   var maxPts=Math.max.apply(null,data.map(function(d){return d.pts;}));
   maxPts=Math.max(maxPts,cfg.weekMetaSemanal)*1.05;
