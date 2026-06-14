@@ -608,42 +608,58 @@ function renderWeekHero(week,today,cfg,abonos){
     slots.push({date:d,key:key,data:found,abono:abono,isWeekend:isWeekend,isFeriado:isFeriado,baseTarget:baseTarget,idx:i});
   }
 
-  // --- Dynamic target redistribution ---
-  // Sum pts from days strictly BEFORE today (ALL days including feriados - trabalho em feriado desconta da meta)
+  // --- Meta semanal efetiva (desconta dias isentos: feriado ou com abono) ---
+  // A quota do dia isento sai da meta total -> outros dias dividem menos
+  var exemptQuota=0;
+  slots.forEach(function(s){
+    var hasAbono=!!(abonos[s.key]);
+    if(s.isFeriado||hasAbono) exemptQuota+=s.baseTarget;
+  });
+  var effectiveWeekTarget=Math.max(0,weekTarget-exemptQuota);
+
+  // pastPts: pontos acumulados em dias passados para fins de redistribuição
+  // - dias não-isentos: usa pontuacao real do Excel
+  // - dias com abono: usa abono.points (esses pontos serão creditados pelo sistema)
+  // - feriados trabalhados (sem abono): bônus, conta como pts extras
   var pastPts=0;
   slots.forEach(function(s){
-    if(s.date<today){
-      pastPts+=s.data?effectivePts(s.key,s.data.pontuacao):(s.abono?s.abono.points:0);
-    }
+    if(s.date>=today) return;
+    var hasAbono=!!(abonos[s.key]);
+    if(hasAbono){pastPts+=(abonos[s.key].points||0);}
+    else if(s.isFeriado){if(s.data&&s.data.pontuacao>0)pastPts+=s.data.pontuacao;}
+    else{pastPts+=s.data?s.data.pontuacao:0;}
   });
-  // Remaining meta = weekTarget - pastPts
-  var remainingMeta=weekTarget-pastPts;
-  // Count non-holiday days from today onwards (feriados não têm obrigação, mas pontos contam se trabalhados)
-  var remainingDays=slots.filter(function(s){return s.date>=today&&!s.isFeriado;}).length;
-  // Adjusted target shared equally among remaining days
-  var adjustedTarget=remainingDays>0?(remainingMeta/remainingDays):0;
-  adjustedTarget=Math.max(0,adjustedTarget);
 
-  // Week totals for progress
-  var weekPts=0,weekExpected=0;
+  // Dias restantes com obrigação (hoje em diante, não-isentos)
+  var remainingDays=slots.filter(function(s){
+    var hasAbono=!!(abonos[s.key]);
+    return s.date>=today&&!s.isFeriado&&!hasAbono;
+  }).length;
+
+  var adjustedTarget=remainingDays>0?Math.max(0,(effectiveWeekTarget-pastPts)/remainingDays):0;
+
+  // Week totals for progress (usa effectiveWeekTarget que já descontou isentos)
+  var weekPts=0;
   var hasPastDays=false;
   slots.forEach(function(s){
     var isFut=s.date>today;
-    var effPts=s.data?effectivePts(s.key,s.data.pontuacao):(s.abono?s.abono.points:0);
+    var hasAbono=!!(abonos[s.key]);
+    var actualPts=s.data?s.data.pontuacao:0;
+    // pts para o progresso: abono.points para dias isentos, pontuacao real para demais
+    var countPts=hasAbono?(abonos[s.key].points||0):actualPts;
     if(!isFut){
       hasPastDays=true;
-      weekPts+=effPts;
-      if(!s.isFeriado)weekExpected+=s.baseTarget;
+      weekPts+=countPts;
     }
   });
 
-  var weekPct=weekTarget>0?(weekPts/weekTarget*100):0;
+  var weekPct=effectiveWeekTarget>0?(weekPts/effectiveWeekTarget*100):0;
   var statusCls,statusTxt;
   if(!hasPastDays){statusCls='future';statusTxt='Semana futura';}
   else{
-    var def=weekExpected-weekPts;
-    if(weekPts>=weekTarget*0.99){statusCls='hit';statusTxt='Meta atingida ✓';}
-    else if(def>0.5){statusCls='miss';statusTxt='Atrasado '+fmt(def)+' pts';}
+    var def=pastPts-weekPts; // usando pastPts calculado acima
+    if(weekPts>=effectiveWeekTarget*0.99){statusCls='hit';statusTxt='Meta atingida ✓';}
+    else if(adjustedTarget>cfg.weekMetaDia*1.15){statusCls='miss';statusTxt='Atrasado — meta/dia: '+fmt(adjustedTarget)+' pts';}
     else{statusCls='hit';statusTxt='Em dia ✓';}
   }
 
@@ -675,11 +691,20 @@ function renderWeekHero(week,today,cfg,abonos){
     var diff=(!isFut&&!isFeriado&&displayTarget>0)?(effPts-displayTarget):null;
     var diffHtml=diff!==null?'<div class="dc-diff" style="color:'+(diff>=-0.01?'var(--green)':'var(--red)')+'">'+(diff>=0?'+':'')+fmt(diff)+'</div>':'';
 
+    var hasAbono=!!(abonos[s.key]);
+    var isExempt=isFeriado||hasAbono;
+    // Para dias isentos (feriado/abono): sem meta, mostrar crédito
     var targetLabel='';
-    if(isFeriado){
+    if(isFeriado&&!hasAbono){
       targetLabel='<div class="dc-holiday-label">Feriado</div>';
-      // Se trabalhou no feriado, mostra o bônus
-      if(effPts>0&&!isFut)diffHtml='<div class="dc-diff" style="color:var(--green)">+'+fmt(effPts)+' ✓</div>';
+      if(effPts>0&&!isFut)diffHtml='<div class="dc-diff" style="color:var(--green)">+'+fmt(effPts)+' bônus</div>';
+    }
+    else if(hasAbono&&!isFut){
+      targetLabel='<div class="dc-holiday-label" style="color:var(--purple)">Abonado</div>';
+      diffHtml=''; // abono não tem diff
+    }
+    else if(isExempt&&isFut){
+      targetLabel='<div class="dc-target" style="color:var(--muted)">Isento</div>';
     }
     else if(isFut||isToday){
       targetLabel='<div class="dc-target" style="color:var(--yellow)">meta '+fmt(adjustedTarget)+'</div>';
@@ -717,8 +742,8 @@ function renderWeekHero(week,today,cfg,abonos){
   html+='<div style="display:flex;justify-content:space-between;font-size:0.78rem;color:var(--muted);margin-bottom:4px"><span>Progresso da semana</span><span style="color:var(--text);font-weight:700">'+fmt(weekPct)+'%</span></div>';
   html+='<div class="wh-progress-bar"><div class="wh-progress-fill" style="width:'+Math.min(weekPct,100)+'%;background:'+fillColor+'"></div></div>';
   html+='</div>';
-  html+='<div class="wh-stat"><strong>'+fmt(weekPts)+'</strong> / '+fmt(weekTarget)+' pts</div>';
-  html+='<div class="wh-stat">Esperado acum.: <strong>'+fmt(weekExpected)+'</strong></div>';
+  html+='<div class="wh-stat"><strong>'+fmt(weekPts)+'</strong> / <span title="Meta original: '+fmt(weekTarget)+' pts">'+fmt(effectiveWeekTarget)+'</span> pts'+(exemptQuota>0.01?' <span style="font-size:0.7rem;color:var(--purple)">(-'+fmt(exemptQuota)+' isentos)</span>':'')+'</div>';
+  html+='<div class="wh-stat">Meta/dia restante: <strong style="color:var(--yellow)">'+fmt(adjustedTarget)+'</strong></div>';
   html+='</div>';
   html+='</div>'; // week-hero
   document.getElementById('week-hero').innerHTML=html;
@@ -734,7 +759,21 @@ function renderHojeCard(curWeek,today,cfg,abonos){
   var dateMap={};
   curWeek.days.forEach(function(d){dateMap[d.date]=d;});
 
-  // Sum pts from days strictly BEFORE today (incluindo feriados trabalhados)
+  // Calcular meta efetiva da semana (desconta dias isentos: feriado ou com abono)
+  var exemptQuota2=0;
+  for(var i=0;i<7;i++){
+    var d=new Date(monday);d.setDate(monday.getDate()+i);
+    var key=dk(d);
+    var rec=dateMap[key]||null;
+    var isFeriado=rec&&rec.feriado;
+    var hasAbono=!!(abonos[key]);
+    var isWeekend=(i>=5);
+    var baseT=isFeriado?0:(isWeekend?cfg.weekMetaFds:cfg.weekMetaDia);
+    if(isFeriado||hasAbono) exemptQuota2+=baseT;
+  }
+  var effectiveWeekTarget2=Math.max(0,cfg.weekMetaSemanal-exemptQuota2);
+
+  // pastPts para redistribuição
   var pastPts=0;
   var remainingCount=0;
   for(var i=0;i<7;i++){
@@ -742,14 +781,17 @@ function renderHojeCard(curWeek,today,cfg,abonos){
     var key=dk(d);
     var rec=dateMap[key]||null;
     var isFeriado=rec&&rec.feriado;
-    // feriados contam para pastPts se trabalhados, mas não entram no remainingCount
-    if(d<today){pastPts+=rec?effectivePts(key,rec.pontuacao):0;}
-    if(d>=today&&!isFeriado)remainingCount++;
+    var hasAbono=!!(abonos[key]);
+    var isExempt=isFeriado||hasAbono;
+    if(d<today){
+      if(hasAbono)pastPts+=(abonos[key].points||0);
+      else if(isFeriado){if(rec&&rec.pontuacao>0)pastPts+=rec.pontuacao;}
+      else pastPts+=rec?rec.pontuacao:0;
+    }
+    if(d>=today&&!isExempt)remainingCount++;
   }
 
-  // Adjusted target for today and remaining days
-  var remainingMeta=cfg.weekMetaSemanal-pastPts;
-  var adjustedTarget=remainingCount>0?Math.max(0,remainingMeta/remainingCount):0;
+  var adjustedTarget=remainingCount>0?Math.max(0,(effectiveWeekTarget2-pastPts)/remainingCount):0;
 
   // Today's current state
   var todayRec=dateMap[todayKey]||null;
