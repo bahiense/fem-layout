@@ -710,7 +710,7 @@ function renderWeekHero(week,today,cfg,abonos){
       targetLabel='<div class="dc-target" style="color:'+(changed?'var(--yellow)':'var(--muted)')+'">meta '+fmt(adjustedBase)+(changed?' ↓':'')+'</div>';
     }
 
-    html+='<div class="'+cls+'"'+(clickable?' onclick="openModal(''+s.key+'')"':'')+'>'; 
+    html+='<div class="'+cls+'"'+(clickable?' data-key="'+s.key+'" onclick="openModal(this.dataset.key)"':'')+'>'; 
     html+='<div class="dc-name">'+DAYS[i]+'<br><span style="font-weight:400">'+fmtDate(s.date)+'</span></div>';
     html+='<div class="dc-pts" style="color:'+(isFut?'var(--muted)':actualPts>0?'var(--text)':'var(--muted)')+'">'+(isFut?'--':fmt(actualPts))+'</div>';
     html+=targetLabel+diffHtml;
