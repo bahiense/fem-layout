@@ -87,7 +87,14 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 
 /* Past weeks */
 .weeks-list{display:flex;flex-direction:column;gap:8px}
-.week-row{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.week-row{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;cursor:pointer;transition:border-color .15s}
+.week-row:hover{border-color:var(--blue)}
+.week-row-wrap{border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.week-row-wrap .week-row{border:none;border-radius:0;border-bottom:1px solid var(--border)}
+.week-row-expand{display:none;padding:14px 16px 16px;background:var(--surface)}
+.week-row-expand.open{display:block}
+.wr-chevron{margin-left:auto;font-size:0.8rem;color:var(--muted);transition:transform .2s}
+.wr-chevron.open{transform:rotate(180deg)}
 .wr-label{font-size:0.8rem;color:var(--muted);min-width:170px}
 .wr-bar-wrap{flex:1;min-width:80px}
 .wr-bar{background:#21262d;border-radius:99px;height:5px;overflow:hidden}
@@ -870,42 +877,113 @@ function renderSparkline(weeks,cfg,abonos,curMondayKey){
 }
 
 // ==================== PAST WEEKS ====================
+function togglePastWeek(id){
+  var expand=document.getElementById('pwe-'+id);
+  var chev=document.getElementById('pwc-'+id);
+  if(!expand)return;
+  var isOpen=expand.classList.contains('open');
+  expand.classList.toggle('open',!isOpen);
+  if(chev)chev.classList.toggle('open',!isOpen);
+}
+
 function renderPastWeeks(pastWeeks,cfg,abonos){
   var label=document.getElementById('past-label');
   var section=document.getElementById('past-weeks');
   if(!pastWeeks.length){label.style.display='none';section.innerHTML='';return;}
   label.style.display='block';
-  
+
   var html='';
-  pastWeeks.slice().reverse().forEach(function(week){
+  pastWeeks.slice().reverse().forEach(function(week,wi){
     var monday=week.monday;
-    var friday=new Date(monday);friday.setDate(monday.getDate()+4);
-    var weekLabel=fmtDate(monday)+' a '+fmtDate(friday);
-    
-    var weekPts=0,weekExpected=0,target=cfg.weekMetaSemanal;
-    week.days.forEach(function(d){
-      // Include ALL days (Seg-Dom), excluding feriados
-      weekPts+=effectivePts(d.date,d.pontuacao);
-      if(!d.feriado){
-        var isWknd=d.isWeekend;
-        if(d.metaDiaria>0)weekExpected+=d.metaDiaria;
-        else weekExpected+=isWknd?cfg.weekMetaFds:cfg.weekMetaDia;
-      }
-    });
-    
-    var pct=target>0?(weekPts/target*100):0;
-    var badgeCls=weekPts>=target*0.99?'hit':weekPts>=target*0.6?'partial':'miss';
-    var badgeTxt=weekPts>=target*0.99?'Atingida':weekPts>=target*0.6?'Parcial':'Não atingida';
+    var sunday=new Date(monday);sunday.setDate(monday.getDate()+6);
+    var weekLabel='Semana de '+fmtDate(monday)+' a '+fmtDate(sunday);
+    var target=cfg.weekMetaSemanal;
+    var wid='pw'+wi;
+
+    // Build slots for this week (7 days Mon–Sun)
+    var weekPts=0;
+    var exemptQ=0;
+    var slots=[];
+    for(var i=0;i<7;i++){
+      var d=new Date(monday);d.setDate(monday.getDate()+i);
+      var key=dk(d);
+      var dayRec=null;
+      week.days.forEach(function(x){if(x.date===key)dayRec=x;});
+      var isWeekend=(i>=5);
+      var isFeriado=dayRec&&dayRec.feriado;
+      var hasAbono=!!(abonos[key]);
+      var abonoPts=hasAbono?(abonos[key].points||0):0;
+      var baseTarget=isFeriado?0:(isWeekend?cfg.weekMetaFds:cfg.weekMetaDia);
+      var pontuacao=dayRec?dayRec.pontuacao:0;
+      if(isFeriado)exemptQ+=baseTarget;
+      else if(hasAbono)exemptQ+=abonoPts;
+      weekPts+=pontuacao;
+      slots.push({date:d,key:key,data:dayRec,isWeekend:isWeekend,isFeriado:isFeriado,hasAbono:hasAbono,abonoPts:abonoPts,baseTarget:baseTarget,pontuacao:pontuacao});
+    }
+    var effectiveTarget=Math.max(0,target-exemptQ);
+    var scale=target>0?(effectiveTarget/target):1;
+
+    var pct=effectiveTarget>0?(weekPts/effectiveTarget*100):0;
+    var badgeCls=weekPts>=effectiveTarget*0.99?'hit':weekPts>=effectiveTarget*0.6?'partial':'miss';
+    var badgeTxt=weekPts>=effectiveTarget*0.99?'Atingida':weekPts>=effectiveTarget*0.6?'Parcial':'Não atingida';
     var fillC=badgeCls==='hit'?'var(--green)':badgeCls==='partial'?'var(--yellow)':'var(--red)';
-    
-    html+='<div class="week-row">';
-    html+='<div class="wr-label" style="color:var(--muted)">'+weekLabel+'</div>';
+
+    html+='<div class="week-row-wrap">';
+    // Summary row (clickable header)
+    html+='<div class="week-row" onclick="togglePastWeek(\''+wid+'\')">';
+    html+='<div class="wr-label" style="color:var(--text);font-weight:600">'+weekLabel+'</div>';
     html+='<div class="wr-bar-wrap"><div class="wr-bar"><div class="wr-fill" style="width:'+Math.min(pct,100)+'%;background:'+fillC+'"></div></div></div>';
-    html+='<div class="wr-pts"><strong>'+fmt(weekPts)+'</strong> <span style="color:var(--muted)">/ '+fmt(target)+' pts</span></div>';
+    html+='<div class="wr-pts"><strong>'+fmt(weekPts)+'</strong> <span style="color:var(--muted)">/ '+fmt(effectiveTarget)+'</span>'+(exemptQ>0.01?' <span style="font-size:0.68rem;color:var(--purple)">(-'+fmt(exemptQ)+')</span>':'')+'</div>';
     html+='<span class="wr-badge '+badgeCls+'">'+badgeTxt+'</span>';
+    html+='<span class="wr-chevron" id="pwc-'+wid+'">▼</span>';
     html+='</div>';
+
+    // Expanded day cards
+    html+='<div class="week-row-expand" id="pwe-'+wid+'">';
+    html+='<div class="day-cards">';
+    slots.forEach(function(s,i){
+      var adjustedBase=s.isWeekend?(cfg.weekMetaFds*scale):(cfg.weekMetaDia*scale);
+      var isExempt=s.isFeriado||s.hasAbono;
+      var cls='day-card';
+      if(s.isFeriado||s.hasAbono)cls+=' holiday';
+      else if(adjustedBase>0){
+        if(s.pontuacao>=adjustedBase*0.99)cls+=' hit';
+        else if(s.pontuacao>=adjustedBase*0.5)cls+=' partial';
+        else cls+=' miss';
+      }
+      cls+=' clickable';
+
+      var diffHtml='';
+      if(!isExempt&&adjustedBase>0){
+        var d2=s.pontuacao-adjustedBase;
+        diffHtml='<div class="dc-diff" style="color:'+(d2>=-0.01?'var(--green)':'var(--red)')+'">'+(d2>=0?'+':'')+fmt(d2)+'</div>';
+      }
+      if(s.isFeriado&&s.pontuacao>0){
+        diffHtml='<div class="dc-diff" style="color:var(--green)">+'+fmt(s.pontuacao)+' bônus</div>';
+      }
+
+      var targetLabel='';
+      if(s.isFeriado){
+        targetLabel='<div class="dc-holiday-label">Feriado</div>';
+      } else if(s.hasAbono){
+        targetLabel='<div class="dc-holiday-label" style="color:var(--purple)">Isento</div>';
+      } else {
+        var changed=Math.abs(adjustedBase-s.baseTarget)>0.05;
+        targetLabel='<div class="dc-target" style="color:'+(changed?'var(--yellow)':'var(--muted)')+'">meta '+fmt(adjustedBase)+(changed?' ↓':'')+'</div>';
+      }
+
+      html+='<div class="'+cls+'" data-key="'+s.key+'" onclick="openModal(this.dataset.key)">';
+      html+='<div class="dc-name">'+DAYS[i]+'<br><span style="font-weight:400">'+fmtDate(s.date)+'</span></div>';
+      html+='<div class="dc-pts" style="color:'+(s.pontuacao>0?'var(--text)':'var(--muted)')+'">'+(s.pontuacao>0?fmt(s.pontuacao):'--')+'</div>';
+      html+=targetLabel+diffHtml;
+      if(s.hasAbono)html+='<div style="font-size:0.63rem;color:var(--purple);margin-top:3px;background:rgba(163,113,247,.15);border-radius:6px;padding:2px 6px">Ab. +'+fmt(s.abonoPts)+'</div>';
+      html+='</div>';
+    });
+    html+='</div>'; // day-cards
+    html+='</div>'; // expand
+    html+='</div>'; // week-row-wrap
   });
-  
+
   section.innerHTML=html;
 }
 
