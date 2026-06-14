@@ -624,7 +624,8 @@ function renderWeekHero(week,today,cfg,abonos){
   // (abono já reduziu a meta, não entra no acumulado de pts)
   var pastPts=0;
   slots.forEach(function(s){
-    if(s.date<today) pastPts+=s.data?s.data.pontuacao:0;
+    var _exempt=s.isFeriado||!!(abonos[s.key]);
+    if(s.date<today&&!_exempt) pastPts+=s.data?s.data.pontuacao:0;
   });
 
   // Dias restantes de trabalho (hoje em diante, não isentos)
