@@ -228,8 +228,8 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
     <strong>Metas:</strong>
     <label>Dia útil (Seg–Sex): <input type="number" class="cfg-input" id="cfg-dia" value="4.27" step="0.01" min="0" onchange="onCfgChange()"> pts</label>
     <label>Meta Semanal (Seg–Dom): <input type="number" class="cfg-input" id="cfg-semana" value="27.75" step="0.01" min="0" onchange="onCfgChange()"> pts</label>
-    <span id="cfg-hint" style="font-size:0.72rem;color:var(--muted)"></span>
-    <label style="margin-left:auto">Deduções extras: <input type="number" class="cfg-input" id="cfg-deducoes" value="0" step="0.01" min="0" onchange="onCfgChange()"> pts</label>
+    <span style="color:var(--border);font-size:1rem">|</span>
+    <label style="color:var(--muted);font-size:0.78rem">Sab/Dom: <span id="cfg-fds-display" style="background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:4px 10px;color:var(--text);font-size:0.85rem;font-weight:600;min-width:60px;display:inline-block;text-align:right">3,20</span> pts cada</label>
   </div>
 
   <!-- Upload compact strip (inside dashboard) -->
@@ -483,16 +483,11 @@ function mergeExcelData(rows){
 function getCfg(){
   var weekMetaDia=parseFloat(document.getElementById('cfg-dia').value)||4.27;
   var weekMetaSemanal=parseFloat(document.getElementById('cfg-semana').value)||27.75;
-  // Weekend target = what's left after 5 weekdays, split by 2
-  var weekMetaFds=(weekMetaSemanal-weekMetaDia*5)/2;
-  var hint=document.getElementById('cfg-hint');
-  if(hint)hint.textContent='Sab/Dom: '+fmt(weekMetaFds)+' pts cada';
-  return {
-    weekMetaDia:weekMetaDia,
-    weekMetaSemanal:weekMetaSemanal,
-    weekMetaFds:weekMetaFds,
-    extraDeducoes:parseFloat(document.getElementById('cfg-deducoes').value)||0
-  };
+  var weekMetaFds=Math.max(0,(weekMetaSemanal-weekMetaDia*5)/2);
+  // Atualiza display read-only de Sab/Dom
+  var fdsEl=document.getElementById('cfg-fds-display');
+  if(fdsEl)fdsEl.textContent=fmt(weekMetaFds);
+  return {weekMetaDia:weekMetaDia,weekMetaSemanal:weekMetaSemanal,weekMetaFds:weekMetaFds};
 }
 function onCfgChange(){
   if(!appState)return;
@@ -503,7 +498,7 @@ function onCfgChange(){
 function applyCfgToUI(cfg){
   document.getElementById('cfg-dia').value=cfg.weekMetaDia||4.27;
   document.getElementById('cfg-semana').value=cfg.weekMetaSemanal||27.75;
-  document.getElementById('cfg-deducoes').value=cfg.extraDeducoes||0;
+  getCfg(); // refresh Sab/Dom display
 }
 
 // ==================== EFFECTIVE POINTS ====================
@@ -923,7 +918,7 @@ function renderMonthSummary(today,cfg,abonos){
     }
   });
   
-  var metaLiq=(appState.metaLiquida||0)-cfg.extraDeducoes;
+  var metaLiq=(appState.metaLiquida||0);
   var restante=metaLiq-acum;
   var pct=metaLiq>0?(acum/metaLiq*100):0;
   var deficit=expectedSoFar-acum;
@@ -961,7 +956,7 @@ function renderMonthSummary(today,cfg,abonos){
 function renderProjection(today,cfg,abonos){
   var daily=appState.dailyData;
   var pastPts=0,pastDias=0,futureDias=0;
-  var metaLiq=(appState.metaLiquida||0)-cfg.extraDeducoes;
+  var metaLiq=(appState.metaLiquida||0);
 
   daily.forEach(function(d){
     var date=parseDate(d.date);
