@@ -591,7 +591,7 @@ function renderDashboard(){
   var curMonday=getCurrentWeekMonday();
   var curMondayKey=dk(curMonday);
   
-  var pastWeeks=weeks.filter(function(w){return dk(w.monday)<curMondayKey;});
+  var pastWeeks=weeks.filter(function(w){return w.monday<curMonday;});
   var curWeek=weeks.find(function(w){return dk(w.monday)===curMondayKey;})||{monday:curMonday,days:[]};
   
   renderWeekHero(curWeek,today,cfg,abonos);
@@ -825,10 +825,23 @@ function renderHojeCard(curWeek,today,cfg,abonos){
     if(d>=today&&!isExempt) remainingCount++;
   }
 
-  var scale2=cfg.weekMetaSemanal>0?(effectiveWeekTarget2/cfg.weekMetaSemanal):1;
+  // Redistribuição proporcional: calcula peso de cada dia restante
+  var remainingWeightSum2=0;
+  for(var i=0;i<7;i++){
+    var d=new Date(monday);d.setDate(monday.getDate()+i);
+    var key=dk(d);
+    var rec=dateMap[key]||null;
+    var isFer=rec&&rec.feriado;
+    var hasAb=!!(abonos[key]);
+    var isWknd=(i>=5);
+    if(d>=today&&!isFer&&!hasAb) remainingWeightSum2+=isWknd?cfg.weekMetaFds:cfg.weekMetaDia;
+  }
+  var remainingTarget2=Math.max(0,effectiveWeekTarget2-pastPts);
   var todayIsWeekend=(today.getDay()===0||today.getDay()===6);
-  var adjustedBase2=todayIsWeekend?(cfg.weekMetaFds*scale2):(cfg.weekMetaDia*scale2);
-  var adjustedTarget=remainingCount>0?Math.max(0,(effectiveWeekTarget2-pastPts)/remainingCount):0;
+  var todayWeight=todayIsWeekend?cfg.weekMetaFds:cfg.weekMetaDia;
+  // Meta proporcional para hoje
+  var adjustedTarget=remainingWeightSum2>0?(todayWeight/remainingWeightSum2)*remainingTarget2:0;
+  var adjustedBase2=todayWeight*(cfg.weekMetaSemanal>0?(effectiveWeekTarget2/cfg.weekMetaSemanal):1);
 
   // Today's current state
   var todayRec=dateMap[todayKey]||null;
@@ -839,8 +852,6 @@ function renderHojeCard(curWeek,today,cfg,abonos){
   var todayPts=todayRec?todayRec.pontuacao:0;
   var todayEff=todayPts+todayAbono;
   var needToday=Math.max(0,adjustedTarget-todayEff);
-  var isWeekend=today.getDay()===0||today.getDay()===6;
-  var baseTarget=isWeekend?cfg.weekMetaFds:cfg.weekMetaDia;
 
   var col=needToday<=0?'var(--green)':needToday<=adjustedTarget*0.5?'var(--yellow)':'var(--red)';
 
@@ -940,15 +951,16 @@ function renderPastWeeks(pastWeeks,cfg,abonos){
       var isFeriado=dayRec&&dayRec.feriado;
       var hasAbono=!!(abonos[key]);
       var abonoPts=hasAbono?(abonos[key].points||0):0;
-      var baseTarget=isFeriado?0:(isWeekend?cfg.weekMetaFds:cfg.weekMetaDia);
       var pontuacao=dayRec?dayRec.pontuacao:0;
-      if(isFeriado)exemptQ+=baseTarget;
+      var excelMeta=dayRec?dayRec.metaDiaria:0; // meta real do Excel na época
+      if(isFeriado)exemptQ+=excelMeta;
       else if(hasAbono)exemptQ+=abonoPts;
       weekPts+=pontuacao;
-      slots.push({date:d,key:key,data:dayRec,isWeekend:isWeekend,isFeriado:isFeriado,hasAbono:hasAbono,abonoPts:abonoPts,baseTarget:baseTarget,pontuacao:pontuacao});
+      slots.push({date:d,key:key,data:dayRec,isWeekend:isWeekend,isFeriado:isFeriado,hasAbono:hasAbono,abonoPts:abonoPts,pontuacao:pontuacao});
     }
+    // target da semana = soma real das metas diárias do Excel
+    var target=slots.reduce(function(sum,s){return sum+(s.data?s.data.metaDiaria:0);},0)||cfg.weekMetaSemanal;
     var effectiveTarget=Math.max(0,target-exemptQ);
-    var scale=target>0?(effectiveTarget/target):1;
 
     var pct=effectiveTarget>0?(weekPts/effectiveTarget*100):0;
     var badgeCls=weekPts>=effectiveTarget*0.99?'hit':weekPts>=effectiveTarget*0.6?'partial':'miss';
@@ -969,20 +981,23 @@ function renderPastWeeks(pastWeeks,cfg,abonos){
     html+='<div class="week-row-expand" id="pwe-'+wid+'">';
     html+='<div class="day-cards">';
     slots.forEach(function(s,i){
-      var adjustedBase=s.isWeekend?(cfg.weekMetaFds*scale):(cfg.weekMetaDia*scale);
+      // Usa metaDiaria do Excel para comparação (meta real da época); se não houver, não mostra
+      var excelMeta=s.data?s.data.metaDiaria:0;
       var isExempt=s.isFeriado||s.hasAbono;
       var cls='day-card';
       if(s.isFeriado||s.hasAbono)cls+=' holiday';
-      else if(adjustedBase>0){
-        if(s.pontuacao>=adjustedBase*0.99)cls+=' hit';
-        else if(s.pontuacao>=adjustedBase*0.5)cls+=' partial';
+      else if(excelMeta>0){
+        if(s.pontuacao>=excelMeta*0.99)cls+=' hit';
+        else if(s.pontuacao>=excelMeta*0.5)cls+=' partial';
         else cls+=' miss';
+      } else {
+        cls+=' future'; // sem meta definida
       }
       cls+=' clickable';
 
       var diffHtml='';
-      if(!isExempt&&adjustedBase>0){
-        var d2=s.pontuacao-adjustedBase;
+      if(!isExempt&&excelMeta>0){
+        var d2=s.pontuacao-excelMeta;
         diffHtml='<div class="dc-diff" style="color:'+(d2>=-0.01?'var(--green)':'var(--red)')+'">'+(d2>=0?'+':'')+fmt(d2)+'</div>';
       }
       if(s.isFeriado&&s.pontuacao>0){
@@ -994,9 +1009,8 @@ function renderPastWeeks(pastWeeks,cfg,abonos){
         targetLabel='<div class="dc-holiday-label">Feriado</div>';
       } else if(s.hasAbono){
         targetLabel='<div class="dc-holiday-label" style="color:var(--purple)">Isento</div>';
-      } else {
-        var changed=Math.abs(adjustedBase-s.baseTarget)>0.05;
-        targetLabel='<div class="dc-target" style="color:'+(changed?'var(--yellow)':'var(--muted)')+'">meta '+fmt(adjustedBase)+(changed?' ↓':'')+'</div>';
+      } else if(excelMeta>0){
+        targetLabel='<div class="dc-target" style="color:var(--muted)">meta '+fmt(excelMeta)+'</div>';
       }
 
       html+='<div class="'+cls+'" data-key="'+s.key+'" onclick="openModal(this.dataset.key)">';
