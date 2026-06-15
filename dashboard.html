@@ -234,8 +234,8 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
   <div class="config-strip">
     <strong>Metas:</strong>
     <label>Dia útil (Seg–Sex): <input type="number" class="cfg-input" id="cfg-dia" value="4.27" step="0.01" min="0" onchange="onCfgChange()"> pts</label>
-    <label>Meta Semanal (Seg–Dom): <input type="number" class="cfg-input" id="cfg-semana" value="27.75" step="0.01" min="0" onchange="onCfgChange()"> pts</label>
     <span style="color:var(--border);font-size:1rem">|</span>
+    <label style="color:var(--muted);font-size:0.78rem">Meta Semanal: <span id="cfg-semana-display" style="background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:4px 10px;color:var(--text);font-size:0.85rem;font-weight:600;min-width:60px;display:inline-block;text-align:right">27,75</span> pts</label>
     <label style="color:var(--muted);font-size:0.78rem">Sab/Dom: <span id="cfg-fds-display" style="background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:4px 10px;color:var(--text);font-size:0.85rem;font-weight:600;min-width:60px;display:inline-block;text-align:right">3,20</span> pts cada</label>
     <button class="btn btn-primary" onclick="onCfgChange()" style="margin-left:8px;padding:6px 16px;font-size:0.82rem">↻ Aplicar metas</button>
   </div>
@@ -490,11 +490,26 @@ function mergeExcelData(rows){
 }
 
 // ==================== CONFIG ====================
+function calcWeekMetaSemanal(weekMetaDia){
+  // Calcula meta semanal automaticamente a partir da meta líquida mensal do Excel
+  if(appState&&appState.metaLiquida>0&&appState.dailyData&&appState.dailyData.length){
+    var nonFeriadoDays=appState.dailyData.filter(function(d){return !d.feriado;}).length;
+    if(nonFeriadoDays>0){
+      var avgDaily=appState.metaLiquida/nonFeriadoDays;
+      return avgDaily*7; // semana de 7 dias
+    }
+  }
+  // Fallback: weekMetaDia*5 + fds*2, onde fds=(total-dia*5)/2 → só usa dia*7/5*7 não, melhor usar proporção
+  return weekMetaDia*(7/5); // proporção simples caso não haja dados
+}
+
 function getCfg(){
   var weekMetaDia=parseFloat(document.getElementById('cfg-dia').value)||4.27;
-  var weekMetaSemanal=parseFloat(document.getElementById('cfg-semana').value)||27.75;
+  var weekMetaSemanal=calcWeekMetaSemanal(weekMetaDia);
   var weekMetaFds=Math.max(0,(weekMetaSemanal-weekMetaDia*5)/2);
-  // Atualiza display read-only de Sab/Dom
+  // Atualiza displays read-only
+  var semEl=document.getElementById('cfg-semana-display');
+  if(semEl)semEl.textContent=fmt(weekMetaSemanal);
   var fdsEl=document.getElementById('cfg-fds-display');
   if(fdsEl)fdsEl.textContent=fmt(weekMetaFds);
   return {weekMetaDia:weekMetaDia,weekMetaSemanal:weekMetaSemanal,weekMetaFds:weekMetaFds};
@@ -507,8 +522,7 @@ function onCfgChange(){
 }
 function applyCfgToUI(cfg){
   document.getElementById('cfg-dia').value=cfg.weekMetaDia||4.27;
-  document.getElementById('cfg-semana').value=cfg.weekMetaSemanal||27.75;
-  getCfg(); // refresh Sab/Dom display
+  getCfg(); // recalcula e atualiza displays
 }
 
 // ==================== EFFECTIVE POINTS ====================
