@@ -1008,17 +1008,14 @@ function renderMonthSummary(today,cfg,abonos){
   var acum=0,expectedSoFar=0,diasFut=0;
   var metaDiariaMedia=cfg.weekMetaDia;
 
-  // Total de abonos registrados no mês para ajustar a meta
+  // Total de abonos para exibir como nota informativa
   var totalAbonos=0;
-  Object.keys(abonos||{}).forEach(function(k){
-    totalAbonos+=(abonos[k].points||0);
-  });
+  Object.keys(abonos||{}).forEach(function(k){totalAbonos+=(abonos[k].points||0);});
 
   daily.forEach(function(d){
     var date=parseDate(d.date);
-    var eff=effectivePts(d.date,d.pontuacao); // pontuacao + abono.points
     if(date<=today){
-      acum+=eff;
+      acum+=d.pontuacao; // pontuação REAL do Excel (igual ao SGP)
       if(!d.feriado){
         var isWknd=(date.getDay()===0||date.getDay()===6);
         expectedSoFar+=isWknd?cfg.weekMetaFds:cfg.weekMetaDia;
@@ -1028,9 +1025,8 @@ function renderMonthSummary(today,cfg,abonos){
     }
   });
 
-  // Meta líquida ajustada: desconta abonos registrados (reduzem obrigação)
-  var metaLiqBruta=(appState.metaLiquida||0);
-  var metaLiq=Math.max(0,metaLiqBruta-totalAbonos);
+  // Meta líquida diretamente do Excel (igual ao SGP — abonos não alteram a meta mensal)
+  var metaLiq=(appState.metaLiquida||0);
   var restante=Math.max(0,metaLiq-acum);
   var pct=metaLiq>0?(acum/metaLiq*100):0;
   var deficit=expectedSoFar-acum;
@@ -1045,7 +1041,7 @@ function renderMonthSummary(today,cfg,abonos){
 
   var html='';
   html+=msCard('Acumulado',fmt(acum),fmt(pct)+'% da meta',col);
-  html+=msCard('Meta do Mês',fmt(metaLiq),totalAbonos>0?'(-'+fmt(totalAbonos)+' abonos)':'meta real do mês','var(--blue)');
+  html+=msCard('Meta do Mês',fmt(metaLiq),'meta líquida do SGP','var(--blue)');
   html+=msCard('Falta',restante<=0?'✓ Meta!':fmt(restante),diasFut+' dias úteis restantes',restante<=0?'var(--green)':'var(--red)');
   html+=msCard('Meta Necessária/dia',fmt(metaNec),'meta padrão: '+fmt(metaDiariaMedia)+'/dia',colNec);
   document.getElementById('month-strip').innerHTML=html;
@@ -1053,7 +1049,7 @@ function renderMonthSummary(today,cfg,abonos){
   var fillC=pct>=100?'var(--green)':pct>=60?'var(--yellow)':'var(--red)';
   document.getElementById('progress-section').innerHTML=
     '<div class="progress-wrap">'+
-    '<div class="progress-info"><span><strong>'+fmt(acum)+'</strong> de <strong>'+fmt(metaLiq)+'</strong> pts'+(totalAbonos>0?' <span style="font-size:0.72rem;color:var(--purple)">(+'+fmt(totalAbonos)+' abonos inclusos)</span>':'')+'</span><span style="font-weight:700;color:'+fillC+'">'+fmt(pct)+'%</span></div>'+
+    '<div class="progress-info"><span><strong>'+fmt(acum)+'</strong> de <strong>'+fmt(metaLiq)+'</strong> pts'+(totalAbonos>0?' <span style="font-size:0.72rem;color:var(--purple)">· +'+fmt(totalAbonos)+' pts abonados (próx. mês)</span>':'')+'</span><span style="font-weight:700;color:'+fillC+'">'+fmt(pct)+'%</span></div>'+
     '<div class="progress-bar"><div class="progress-fill" style="width:'+Math.min(pct,100)+'%;background:'+fillC+'"></div></div>'+
     '<div class="progress-note">Esperado até hoje: <strong style="color:var(--text)">'+fmt(expectedSoFar)+'</strong> pts &nbsp;|&nbsp; Diferença: <strong style="color:'+(deficit>0.5?'var(--red)':'var(--green)')+'">'+(deficit>0?'-':'+')+fmt(Math.abs(deficit))+'</strong> pts</div>'+
     '</div>';
@@ -1068,18 +1064,12 @@ function renderMonthSummary(today,cfg,abonos){
 function renderProjection(today,cfg,abonos){
   var daily=appState.dailyData;
   var pastPts=0,pastDias=0,futureDias=0;
-
-  // Total de abonos registrados para ajustar meta
-  var totalAbonos=0;
-  Object.keys(abonos||{}).forEach(function(k){totalAbonos+=(abonos[k].points||0);});
-  var metaLiq=Math.max(0,(appState.metaLiquida||0)-totalAbonos);
+  var metaLiq=(appState.metaLiquida||0); // igual ao SGP, sem desconto de abonos
 
   daily.forEach(function(d){
     var date=parseDate(d.date);
-    var eff=effectivePts(d.date,d.pontuacao); // inclui abono
     if(date<=today){
-      // Conta todos os dias passados (inclusive feriados onde houve trabalho ou abono)
-      if(eff>0||!d.feriado){pastPts+=eff;pastDias++;}
+      if(!d.feriado||d.pontuacao>0){pastPts+=d.pontuacao;pastDias++;}
     } else {
       if(!d.feriado) futureDias++;
     }
