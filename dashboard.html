@@ -120,6 +120,14 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .alert-strip{border-radius:8px;padding:12px 16px;margin-top:10px;font-size:0.85rem}
 .alert-strip.ok{background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);color:var(--green)}
 .alert-strip.warn{background:rgba(248,81,73,.08);border:1px solid rgba(248,81,73,.25);color:var(--red)}
+.catchup-card{background:rgba(210,153,34,.08);border:1px solid rgba(210,153,34,.3);border-radius:10px;padding:14px 18px;margin-top:10px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.catchup-card.applied{background:rgba(63,185,80,.08);border-color:rgba(63,185,80,.3)}
+.catchup-msg{flex:1;font-size:0.88rem;color:var(--text);line-height:1.5}
+.catchup-actions{display:flex;gap:8px;flex-shrink:0}
+.btn-catchup-yes{background:var(--yellow);color:#000;border:none;border-radius:6px;padding:7px 16px;font-size:0.82rem;font-weight:700;cursor:pointer}
+.btn-catchup-yes:hover{opacity:.85}
+.btn-catchup-no{background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:6px;padding:7px 14px;font-size:0.82rem;cursor:pointer}
+.btn-catchup-no:hover{color:var(--text)}
 
 /* Data panel */
 .data-panel{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:0.8rem;color:var(--muted)}
@@ -269,6 +277,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
   <div class="month-strip" id="month-strip"></div>
   <div id="progress-section"></div>
   <div id="alerta-section"></div>
+  <div id="catchup-section"></div>
 
   <!-- Projeção -->
   <div class="sec-label">Projeção</div>
@@ -481,6 +490,7 @@ function mergeExcelData(rows){
     metaLiquida:p.metaLiquida,
     dailyData:merged,
     abonos:(appState&&appState.periodo===p.periodo&&appState.abonos)||{},
+    weekCatchup:(appState&&appState.periodo===p.periodo&&appState.weekCatchup)||null,
     config:cfg,
     lastUpdate:new Date().toISOString()
   };
@@ -624,6 +634,12 @@ function renderWeekHero(week,today,cfg,abonos){
     else{totalWorkDays++;}
   });
   var effectiveWeekTarget=Math.max(0,weekTarget-exemptQuota);
+  // Adiciona déficit mensal redistribuído para esta semana (se usuário confirmou)
+  var curMondayKey2=dk(getCurrentWeekMonday());
+  var wc=appState&&appState.weekCatchup;
+  if(wc&&wc.monday===curMondayKey2&&wc.pts>0){
+    effectiveWeekTarget+=wc.pts;
+  }
   // Meta base proporcional por tipo de dia (semana/fds), escalada pela redução efetiva
   var scale=weekTarget>0?(effectiveWeekTarget/weekTarget):1;
 
@@ -794,6 +810,8 @@ function renderHojeCard(curWeek,today,cfg,abonos){
     else if(hasAbono) exemptQuota2+=(abonos[key].points||0); // abono: desconta pelo valor
   }
   var effectiveWeekTarget2=Math.max(0,cfg.weekMetaSemanal-exemptQuota2);
+  var wc2=appState&&appState.weekCatchup;
+  if(wc2&&wc2.monday===dk(getCurrentWeekMonday())&&wc2.pts>0) effectiveWeekTarget2+=wc2.pts;
 
   // pastPts para redistribuição: effectivePts (pontuacao + abono) de todos os dias passados
   var pastPts=0;
@@ -1014,6 +1032,51 @@ function renderPastWeeks(pastWeeks,cfg,abonos){
   section.innerHTML=html;
 }
 
+// ==================== CATCHUP ====================
+function applyCatchup(deficit){
+  if(!appState)return;
+  var curMonday=getCurrentWeekMonday();
+  appState.weekCatchup={monday:dk(curMonday),pts:deficit};
+  saveState();
+  renderDashboard();
+}
+function dismissCatchup(){
+  if(!appState)return;
+  var curMonday=getCurrentWeekMonday();
+  appState.weekCatchup={monday:dk(curMonday),pts:0,dismissed:true};
+  saveState();
+  renderDashboard();
+}
+function renderCatchup(deficit,acum,expectedSoFar){
+  var el=document.getElementById('catchup-section');
+  if(!el)return;
+  var curMonday=getCurrentWeekMonday();
+  var curMondayKey=dk(curMonday);
+  var catchup=appState.weekCatchup;
+
+  // Se já aplicado ou descartado para esta semana, mostrar status
+  if(catchup&&catchup.monday===curMondayKey){
+    if(catchup.dismissed){el.innerHTML='';return;}
+    if(catchup.pts>0){
+      el.innerHTML='<div class="catchup-card applied"><div class="catchup-msg">✅ <strong>'+fmt(catchup.pts)+' pts</strong> de déficit mensal redistribuídos na semana atual.</div>'+
+        '<div class="catchup-actions"><button class="btn-catchup-no" onclick="dismissCatchup()">Remover</button></div></div>';
+      return;
+    }
+  }
+
+  // Só mostrar se há déficit relevante
+  if(deficit<=0.1){el.innerHTML='';return;}
+
+  el.innerHTML='<div class="catchup-card">'+
+    '<div class="catchup-msg">📉 Você está <strong style="color:var(--yellow)">'+fmt(deficit)+' pts</strong> abaixo do esperado até hoje '+
+    '(esperado: <strong>'+fmt(expectedSoFar)+'</strong> · feito: <strong>'+fmt(acum)+'</strong>).<br>'+
+    'Quer distribuir esse déficit nos dias restantes desta semana?</div>'+
+    '<div class="catchup-actions">'+
+    '<button class="btn-catchup-yes" onclick="applyCatchup('+deficit.toFixed(4)+')">Sim, adicionar</button>'+
+    '<button class="btn-catchup-no" onclick="dismissCatchup()">Não</button>'+
+    '</div></div>';
+}
+
 // ==================== MONTH SUMMARY ====================
 function renderMonthSummary(today,cfg,abonos){
   var daily=appState.dailyData;
@@ -1070,6 +1133,7 @@ function renderMonthSummary(today,cfg,abonos){
   if(deficit<-0.5)alertHtml='<div class="alert-strip ok">🏆 Adiantado! Folga de <strong>'+fmt(Math.abs(deficit))+' pts</strong>. Basta fazer <strong>'+fmt(metaNec)+'</strong> pts/dia.</div>';
   else if(deficit>1)alertHtml='<div class="alert-strip warn">⚠ Atrasado <strong>'+fmt(deficit)+' pts</strong> em relação ao esperado até hoje.</div>';
   document.getElementById('alerta-section').innerHTML=alertHtml;
+  renderCatchup(deficit,acum,expectedSoFar);
 }
 
 // ==================== PROJEÇÃO ====================
