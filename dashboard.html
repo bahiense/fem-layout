@@ -1137,16 +1137,19 @@ function renderProjection(today,cfg,abonos){
   });
 
   var mediaDiaria=pastDias>0?pastPts/pastDias:cfg.weekMetaDia;
-  // Projeção: média atual × dias restantes (respeitando ratio dia/fds)
-  var totalFutWeight=futWeekdays+futWeekends*(cfg.weekMetaFds>0?cfg.weekMetaFds/cfg.weekMetaDia:1);
-  var projecao=pastPts+(mediaDiaria*totalFutWeight);
+  var futureDias=futWeekdays+futWeekends;
+  // Projeção = ritmo real (média por dia trabalhado) × dias restantes.
+  // NÃO depende da meta configurada — é só uma extrapolação do seu desempenho.
+  var projecao=pastPts+(mediaDiaria*futureDias);
   var projecaoPct=metaLiq>0?(projecao/metaLiq*100):0;
+
+  // Quanto falta e como distribuir nos dias restantes (respeitando seu ratio dia/fds).
+  // O TOTAL necessário (restante) é fixo pela meta do SGP; o ratio só decide o split.
   var restante=Math.max(0,metaLiq-pastPts);
   var totalFutW2=futWeekdays*cfg.weekMetaDia+futWeekends*cfg.weekMetaFds;
   var k=totalFutW2>0?restante/totalFutW2:0;
   var necDia=cfg.weekMetaDia*k;
   var necFds=cfg.weekMetaFds*k;
-  var futureDias=futWeekdays+futWeekends;
 
   var col=projecao>=metaLiq*0.99?'var(--green)':projecao>=metaLiq*0.85?'var(--yellow)':'var(--red)';
   var msg=projecao>=metaLiq*0.99?'✓ No ritmo atual você atingirá a meta!':
@@ -1158,12 +1161,16 @@ function renderProjection(today,cfg,abonos){
   html+='<div class="proj-body">';
   html+='<div class="proj-num" style="color:'+col+'">'+fmt(projecaoPct)+'%</div>';
   html+='<div class="proj-detail">';
-  html+='Projeção: <strong>'+fmt(projecao)+'</strong> pts de <strong>'+fmt(metaLiq)+'</strong><br>';
-  html+='Média atual: <strong>'+fmt(mediaDiaria)+'</strong> pts/dia ('+pastDias+' dias trabalhados)<br>';
-  if(restante>0) html+='Para bater a meta nos '+futureDias+' dias restantes:<br>'
-    +'&nbsp;&nbsp;Seg–Sex: <strong style="color:var(--yellow)">'+fmt(necDia)+'</strong> pts/dia'
-    +(futWeekends>0?' &nbsp;·&nbsp; Sab/Dom: <strong style="color:var(--yellow)">'+fmt(necFds)+'</strong> pts/dia':'')+'<br>';
+  html+='<strong style="color:var(--muted)">No seu ritmo atual</strong> ('+fmt(mediaDiaria)+' pts/dia em '+pastDias+' dias):<br>';
+  html+='Terminaria com <strong style="color:'+col+'">'+fmt(projecao)+'</strong> de <strong>'+fmt(metaLiq)+'</strong> pts<br>';
   html+='<span style="color:'+(projecao>=metaLiq?'var(--green)':'var(--yellow)')+'">'+msg+'</span>';
+  if(restante>0){
+    html+='<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">';
+    html+='<strong style="color:var(--text)">Para bater a meta</strong> ('+fmt(restante)+' pts em '+futureDias+' dias):<br>';
+    html+='&nbsp;&nbsp;Seg–Sex: <strong style="color:var(--yellow)">'+fmt(necDia)+'</strong> pts/dia'
+      +(futWeekends>0?' &nbsp;·&nbsp; Sab/Dom: <strong style="color:var(--yellow)">'+fmt(necFds)+'</strong> pts/dia':'');
+    html+='</div>';
+  }
   html+='</div></div></div>';
 
   document.getElementById('proj-section').innerHTML=html;
