@@ -590,11 +590,8 @@ function renderDashboard(){
   var pastWeeks=weeks.filter(function(w){return w.monday<curMonday;});
   var curWeek=weeks.find(function(w){return dk(w.monday)===curMondayKey;})||{monday:curMonday,days:[]};
 
-  // Calcular déficit mensal aqui para passar a renderWeekHero e renderHojeCard
-  var monthlyDeficit=calcMonthlyDeficit(today,cfg);
-
-  renderWeekHero(curWeek,today,cfg,abonos,monthlyDeficit);
-  renderHojeCard(curWeek,today,cfg,abonos,monthlyDeficit);
+  renderWeekHero(curWeek,today,cfg,abonos);
+  renderHojeCard(curWeek,today,cfg,abonos);
   renderSparkline(weeks,cfg,abonos,curMondayKey);
   renderPastWeeks(pastWeeks,cfg,abonos);
   renderMonthSummary(today,cfg,abonos);
@@ -603,13 +600,9 @@ function renderDashboard(){
   renderDataPanel();
 }
 
-// ==================== MONTHLY DEFICIT ====================
-function calcMonthlyDeficit(today,cfg){return 0;} // removed per user request
-
 // ==================== WEEK HERO ====================
 // Semana Seg–Dom com redistribuição dinâmica de meta
-function renderWeekHero(week,today,cfg,abonos,monthlyDeficit){
-  monthlyDeficit=monthlyDeficit||0;
+function renderWeekHero(week,today,cfg,abonos){
   var monday=week.monday;
   var sunday=new Date(monday);sunday.setDate(monday.getDate()+6);
   var label='Semana de '+fmtDate(monday)+' a '+fmtDate(sunday);
@@ -641,10 +634,7 @@ function renderWeekHero(week,today,cfg,abonos,monthlyDeficit){
     else{totalWorkDays++;}
   });
   var effectiveWeekTarget=Math.max(0,weekTarget-exemptQuota);
-  // effectiveWeekTarget sem déficit mensal (para mostrar "minha meta")
   var effectiveWeekTargetBase=effectiveWeekTarget;
-  // effectiveWeekTarget com déficit mensal (para mostrar "meta ajustada")
-  var effectiveWeekTargetCatchup=effectiveWeekTarget+monthlyDeficit;
   // Meta base proporcional por tipo de dia (semana/fds), escalada pela redução efetiva
   var scale=weekTarget>0?(effectiveWeekTarget/weekTarget):1;
 
@@ -665,7 +655,6 @@ function renderWeekHero(week,today,cfg,abonos,monthlyDeficit){
     }
   });
   var remainingTarget=Math.max(0,effectiveWeekTargetBase-pastPts);
-  var remainingTargetCatchup=Math.max(0,effectiveWeekTargetCatchup-pastPts);
 
   // Para status/nota: meta média por dia restante (apenas informativo)
   var remainingDays=slots.filter(function(s){
@@ -711,10 +700,7 @@ function renderWeekHero(week,today,cfg,abonos,monthlyDeficit){
     var adjustedBase=s.isWeekend?(cfg.weekMetaFds*scale):(cfg.weekMetaDia*scale);
 
     var dayWeight=s.isWeekend?cfg.weekMetaFds:cfg.weekMetaDia;
-    // Meta redistribuída SEM déficit mensal (só redistribuição semanal)
     var slotTarget=isExempt?0:(remainingWeightSum>0?(dayWeight/remainingWeightSum)*remainingTarget:0);
-    // Meta redistribuída COM déficit mensal
-    var slotTargetCatchup=isExempt?0:(remainingWeightSum>0?(dayWeight/remainingWeightSum)*remainingTargetCatchup:0);
     // Meta "minha" = base proporcional sem redistribuição
     var myTarget=adjustedBase;
 
@@ -756,10 +742,6 @@ function renderWeekHero(week,today,cfg,abonos,monthlyDeficit){
       var weekDiff=slotTarget-myTarget;
       if(Math.abs(weekDiff)>0.04){
         targetLabel+='<div class="dc-target" style="color:'+(weekDiff>0?'var(--red)':'var(--green)')+';font-size:0.67rem">sem. '+fmt(slotTarget)+(weekDiff>0?' ▲':' ▼')+'</div>';
-      }
-      // Linha 3: meta com déficit mensal (se há déficit relevante)
-      if(monthlyDeficit>0.1&&Math.abs(slotTargetCatchup-slotTarget)>0.04){
-        targetLabel+='<div class="dc-target" style="color:var(--red);font-size:0.67rem">mês '+fmt(slotTargetCatchup)+' ▲</div>';
       }
     } else {
       // Dias passados: exibe meta ajustada (reduzida) em amarelo se diferente da base original
@@ -807,8 +789,7 @@ function renderWeekHero(week,today,cfg,abonos,monthlyDeficit){
 }
 
 // ==================== HOJE CARD ====================
-function renderHojeCard(curWeek,today,cfg,abonos,monthlyDeficit){
-  monthlyDeficit=monthlyDeficit||0;
+function renderHojeCard(curWeek,today,cfg,abonos){
   var el=document.getElementById('hoje-card');
   var todayKey=dk(today);
 
@@ -860,13 +841,9 @@ function renderHojeCard(curWeek,today,cfg,abonos,monthlyDeficit){
     if(d>=today&&!isFer&&!hasAb) remainingWeightSum2+=isWknd?cfg.weekMetaFds:cfg.weekMetaDia;
   }
   var remainingTarget2=Math.max(0,effectiveWeekTarget2-pastPts);
-  var remainingTarget2Catchup=Math.max(0,effectiveWeekTarget2+monthlyDeficit-pastPts);
   var todayIsWeekend=(today.getDay()===0||today.getDay()===6);
   var todayWeight=todayIsWeekend?cfg.weekMetaFds:cfg.weekMetaDia;
-  // Meta proporcional para hoje (sem déficit mensal = minha meta da semana)
   var adjustedTarget=remainingWeightSum2>0?(todayWeight/remainingWeightSum2)*remainingTarget2:0;
-  // Meta proporcional para hoje (com déficit mensal)
-  var adjustedTargetCatchup=remainingWeightSum2>0?(todayWeight/remainingWeightSum2)*remainingTarget2Catchup:0;
   var adjustedBase2=todayWeight*(cfg.weekMetaSemanal>0?(effectiveWeekTarget2/cfg.weekMetaSemanal):1);
 
   // Today's current state
@@ -893,7 +870,6 @@ function renderHojeCard(curWeek,today,cfg,abonos,monthlyDeficit){
   if(todayAbono>0)html+='<span style="color:var(--purple)">(+'+fmt(todayAbono)+' ab.)</span><br>';
   html+='Minha meta: <strong style="color:var(--muted)">'+fmt(adjustedBase2)+'</strong>';
   if(Math.abs(adjustedTarget-adjustedBase2)>0.05) html+=' → sem. <strong style="color:var(--yellow)">'+fmt(adjustedTarget)+'</strong>';
-  if(monthlyDeficit>0.1&&Math.abs(adjustedTargetCatchup-adjustedTarget)>0.04) html+=' → mês <strong style="color:var(--red)">'+fmt(adjustedTargetCatchup)+'</strong>';
   html+='</div>';
   html+='</div>';
   el.innerHTML=html;
