@@ -1126,9 +1126,9 @@ function renderProjection(today,cfg,abonos){
   var necDia=cfg.weekMetaDia*k;
   var necFds=cfg.weekMetaFds*k;
 
-  var col=projecao>=metaLiq*0.99?'var(--green)':projecao>=metaLiq*0.85?'var(--yellow)':'var(--red)';
-  var msg=projecao>=metaLiq*0.99?'✓ Mantendo sua meta configurada você atinge a meta do mês!':
-           projecao>=metaLiq*0.85?'⚡ Sua meta configurada fica um pouco abaixo do necessário.':
+  var col=projecao>=metaLiq?'var(--green)':projecao>=metaLiq*0.92?'var(--yellow)':'var(--red)';
+  var msg=projecao>=metaLiq?'✓ Mantendo sua meta configurada você atinge a meta do mês!':
+           projecao>=metaLiq*0.92?'⚡ Sua meta configurada fica um pouco abaixo do necessário.':
            '⚠ Sua meta configurada não alcança a meta do mês.';
 
   var html='<div class="proj-card">';
