@@ -604,21 +604,7 @@ function renderDashboard(){
 }
 
 // ==================== MONTHLY DEFICIT ====================
-function calcMonthlyDeficit(today,cfg){
-  if(!appState||!appState.dailyData)return 0;
-  var acum=0,expectedSoFar=0;
-  appState.dailyData.forEach(function(d){
-    var date=parseDate(d.date);
-    if(date<=today){
-      acum+=d.pontuacao;
-      if(!d.feriado){
-        var isWknd=(date.getDay()===0||date.getDay()===6);
-        expectedSoFar+=isWknd?cfg.weekMetaFds:cfg.weekMetaDia;
-      }
-    }
-  });
-  return Math.max(0,expectedSoFar-acum);
-}
+function calcMonthlyDeficit(today,cfg){return 0;} // removed per user request
 
 // ==================== WEEK HERO ====================
 // Semana Seg–Dom com redistribuição dinâmica de meta
@@ -1085,35 +1071,31 @@ function renderCatchup(deficit,acum,expectedSoFar){
 // ==================== MONTH SUMMARY ====================
 function renderMonthSummary(today,cfg,abonos){
   var daily=appState.dailyData;
-  var acum=0,expectedSoFar=0,diasFut=0;
-  var metaDiariaMedia=cfg.weekMetaDia;
-
-  // Total de abonos para exibir como nota informativa
-  var totalAbonos=0;
-  Object.keys(abonos||{}).forEach(function(k){totalAbonos+=(abonos[k].points||0);});
+  var acum=0;
+  var futWeekdays=0,futWeekends=0;
 
   daily.forEach(function(d){
     var date=parseDate(d.date);
     if(date<=today){
-      acum+=d.pontuacao; // pontuação REAL do Excel (igual ao SGP)
-      if(!d.feriado){
-        var isWknd=(date.getDay()===0||date.getDay()===6);
-        expectedSoFar+=isWknd?cfg.weekMetaFds:cfg.weekMetaDia;
-      }
-    } else {
-      if(!d.feriado) diasFut++;
+      acum+=d.pontuacao;
+    } else if(!d.feriado){
+      var isWknd=(date.getDay()===0||date.getDay()===6);
+      if(isWknd) futWeekends++; else futWeekdays++;
     }
   });
 
-  // Meta líquida diretamente do Excel (igual ao SGP — abonos não alteram a meta mensal)
   var metaLiq=(appState.metaLiquida||0);
   var restante=Math.max(0,metaLiq-acum);
   var pct=metaLiq>0?(acum/metaLiq*100):0;
-  var deficit=expectedSoFar-acum;
-  var metaNec=diasFut>0?restante/diasFut:0;
+
+  // Média necessária proporcional: respeita ratio dia-útil/fds
+  var totalWeight=futWeekdays*cfg.weekMetaDia+futWeekends*cfg.weekMetaFds;
+  var k=totalWeight>0?restante/totalWeight:0;
+  var necDia=cfg.weekMetaDia*k;
+  var necFds=cfg.weekMetaFds*k;
 
   var col=pct>=100?'var(--green)':pct>=60?'var(--yellow)':'var(--red)';
-  var colNec=metaNec<=metaDiariaMedia*1.1?'var(--green)':metaNec<=metaDiariaMedia*1.5?'var(--yellow)':'var(--red)';
+  var colNec=necDia<=cfg.weekMetaDia*1.05?'var(--green)':necDia<=cfg.weekMetaDia*1.3?'var(--yellow)':'var(--red)';
 
   function msCard(lbl,val,sub,color){
     return '<div class="ms-card"><div class="ms-label">'+lbl+'</div><div class="ms-value" style="color:'+color+'">'+val+'</div><div class="ms-sub">'+sub+'</div></div>';
@@ -1122,45 +1104,49 @@ function renderMonthSummary(today,cfg,abonos){
   var html='';
   html+=msCard('Acumulado',fmt(acum),fmt(pct)+'% da meta',col);
   html+=msCard('Meta do Mês',fmt(metaLiq),'meta líquida do SGP','var(--blue)');
-  html+=msCard('Falta',restante<=0?'✓ Meta!':fmt(restante),diasFut+' dias úteis restantes',restante<=0?'var(--green)':'var(--red)');
-  html+=msCard('Meta Necessária/dia',fmt(metaNec),'meta padrão: '+fmt(metaDiariaMedia)+'/dia',colNec);
+  html+=msCard('Falta',restante<=0?'✓ Meta!':fmt(restante),(futWeekdays+futWeekends)+' dias restantes',restante<=0?'var(--green)':'var(--red)');
+  html+=msCard('Média/dia útil',restante<=0?'✓':fmt(necDia),'Sab/Dom: '+fmt(necFds)+'/dia',colNec);
   document.getElementById('month-strip').innerHTML=html;
 
   var fillC=pct>=100?'var(--green)':pct>=60?'var(--yellow)':'var(--red)';
   document.getElementById('progress-section').innerHTML=
     '<div class="progress-wrap">'+
-    '<div class="progress-info"><span><strong>'+fmt(acum)+'</strong> de <strong>'+fmt(metaLiq)+'</strong> pts'+(totalAbonos>0?' <span style="font-size:0.72rem;color:var(--purple)">· +'+fmt(totalAbonos)+' pts abonados (próx. mês)</span>':'')+'</span><span style="font-weight:700;color:'+fillC+'">'+fmt(pct)+'%</span></div>'+
+    '<div class="progress-info"><span><strong>'+fmt(acum)+'</strong> de <strong>'+fmt(metaLiq)+'</strong> pts</span><span style="font-weight:700;color:'+fillC+'">'+fmt(pct)+'%</span></div>'+
     '<div class="progress-bar"><div class="progress-fill" style="width:'+Math.min(pct,100)+'%;background:'+fillC+'"></div></div>'+
-    '<div class="progress-note">Esperado até hoje: <strong style="color:var(--text)">'+fmt(expectedSoFar)+'</strong> pts &nbsp;|&nbsp; Diferença: <strong style="color:'+(deficit>0.5?'var(--red)':'var(--green)')+'">'+(deficit>0?'-':'+')+fmt(Math.abs(deficit))+'</strong> pts</div>'+
     '</div>';
 
-  var alertHtml='';
-  if(deficit<-0.5)alertHtml='<div class="alert-strip ok">🏆 Adiantado! Folga de <strong>'+fmt(Math.abs(deficit))+' pts</strong>. Basta fazer <strong>'+fmt(metaNec)+'</strong> pts/dia.</div>';
-  else if(deficit>1)alertHtml='<div class="alert-strip warn">⚠ Atrasado <strong>'+fmt(deficit)+' pts</strong> em relação ao esperado até hoje.</div>';
-  document.getElementById('alerta-section').innerHTML=alertHtml;
-  renderCatchup(deficit,acum,expectedSoFar);
+  document.getElementById('alerta-section').innerHTML='';
+  document.getElementById('catchup-section').innerHTML='';
 }
 
 // ==================== PROJEÇÃO ====================
 function renderProjection(today,cfg,abonos){
   var daily=appState.dailyData;
-  var pastPts=0,pastDias=0,futureDias=0;
-  var metaLiq=(appState.metaLiquida||0); // igual ao SGP, sem desconto de abonos
+  var pastPts=0,pastDias=0;
+  var futWeekdays=0,futWeekends=0;
+  var metaLiq=(appState.metaLiquida||0);
 
   daily.forEach(function(d){
     var date=parseDate(d.date);
     if(date<=today){
       if(!d.feriado||d.pontuacao>0){pastPts+=d.pontuacao;pastDias++;}
-    } else {
-      if(!d.feriado) futureDias++;
+    } else if(!d.feriado){
+      var isWknd=(date.getDay()===0||date.getDay()===6);
+      if(isWknd) futWeekends++; else futWeekdays++;
     }
   });
 
   var mediaDiaria=pastDias>0?pastPts/pastDias:cfg.weekMetaDia;
-  var projecao=pastPts+(mediaDiaria*futureDias);
+  // Projeção: média atual × dias restantes (respeitando ratio dia/fds)
+  var totalFutWeight=futWeekdays+futWeekends*(cfg.weekMetaFds>0?cfg.weekMetaFds/cfg.weekMetaDia:1);
+  var projecao=pastPts+(mediaDiaria*totalFutWeight);
   var projecaoPct=metaLiq>0?(projecao/metaLiq*100):0;
-  var falta=metaLiq-projecao;
-  var necParaMeta=futureDias>0?(metaLiq-pastPts)/futureDias:0;
+  var restante=Math.max(0,metaLiq-pastPts);
+  var totalFutW2=futWeekdays*cfg.weekMetaDia+futWeekends*cfg.weekMetaFds;
+  var k=totalFutW2>0?restante/totalFutW2:0;
+  var necDia=cfg.weekMetaDia*k;
+  var necFds=cfg.weekMetaFds*k;
+  var futureDias=futWeekdays+futWeekends;
 
   var col=projecao>=metaLiq*0.99?'var(--green)':projecao>=metaLiq*0.85?'var(--yellow)':'var(--red)';
   var msg=projecao>=metaLiq*0.99?'✓ No ritmo atual você atingirá a meta!':
@@ -1173,8 +1159,10 @@ function renderProjection(today,cfg,abonos){
   html+='<div class="proj-num" style="color:'+col+'">'+fmt(projecaoPct)+'%</div>';
   html+='<div class="proj-detail">';
   html+='Projeção: <strong>'+fmt(projecao)+'</strong> pts de <strong>'+fmt(metaLiq)+'</strong><br>';
-  html+='Média atual: <strong>'+fmt(mediaDiaria)+'</strong> pts/dia ('+pastDias+' dias)<br>';
-  if(falta>0)html+='Para bater a meta: <strong style="color:var(--yellow)">'+fmt(necParaMeta)+'</strong> pts/dia nos '+futureDias+' dias restantes<br>';
+  html+='Média atual: <strong>'+fmt(mediaDiaria)+'</strong> pts/dia ('+pastDias+' dias trabalhados)<br>';
+  if(restante>0) html+='Para bater a meta nos '+futureDias+' dias restantes:<br>'
+    +'&nbsp;&nbsp;Seg–Sex: <strong style="color:var(--yellow)">'+fmt(necDia)+'</strong> pts/dia'
+    +(futWeekends>0?' &nbsp;·&nbsp; Sab/Dom: <strong style="color:var(--yellow)">'+fmt(necFds)+'</strong> pts/dia':'')+'<br>';
   html+='<span style="color:'+(projecao>=metaLiq?'var(--green)':'var(--yellow)')+'">'+msg+'</span>';
   html+='</div></div></div>';
 
