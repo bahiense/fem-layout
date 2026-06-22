@@ -707,8 +707,10 @@ function renderWeekHero(week,today,cfg,abonos){
     // Meta dinâmica proporcional para hoje/futuros: redistribui restante proporcionalmente ao peso do dia
     var dayWeight=s.isWeekend?cfg.weekMetaFds:cfg.weekMetaDia;
     var slotTarget=isExempt?0:(remainingWeightSum>0?(dayWeight/remainingWeightSum)*remainingTarget:0);
+    // Meta "minha" = base proporcional sem redistribuição
+    var myTarget=adjustedBase;
 
-    // Meta exibida: adjustedBase para dias passados, slotTarget proporcional para hoje/futuros
+    // Cor e classe baseadas na meta ajustada (redistributed) para hoje/futuros, base para passados
     var displayTarget=isExempt?0:(isFut||isToday?slotTarget:adjustedBase);
 
     var cls='day-card';
@@ -723,24 +725,32 @@ function renderWeekHero(week,today,cfg,abonos){
     var clickable=!isFut;
     if(clickable)cls+=' clickable';
 
-    // Diff: pontuacao real vs adjustedBase (referência histórica)
+    // Diff: pontuacao real vs meta ajustada (slotTarget para hoje/fut, adjustedBase para passados)
     var diffHtml='';
-    if(!isFut&&!isExempt&&adjustedBase>0){
-      var d2=actualPts-adjustedBase;
+    if(!isFut&&!isExempt&&displayTarget>0){
+      var d2=actualPts-displayTarget;
       diffHtml='<div class="dc-diff" style="color:'+(d2>=-0.01?'var(--green)':'var(--red)')+'">'+(d2>=0?'+':'')+fmt(d2)+'</div>';
     }
     if(!isFut&&isFeriado&&actualPts>0){
       diffHtml='<div class="dc-diff" style="color:var(--green)">+'+fmt(actualPts)+' bônus</div>';
     }
 
-    // Label de meta/status
+    // Label de meta/status — duas linhas para hoje/futuros
     var targetLabel='';
+    var slotDiff=slotTarget-myTarget;
+    var hasDiff=Math.abs(slotDiff)>0.04;
     if(isFeriado){
       targetLabel='<div class="dc-holiday-label">Feriado</div>';
     } else if(hasAbono){
       targetLabel='<div class="dc-holiday-label" style="color:var(--purple)">Isento</div>';
     } else if(isFut||isToday){
-      targetLabel='<div class="dc-target" style="color:var(--yellow)">meta '+fmt(slotTarget)+'</div>';
+      // Linha 1: minha meta (base)
+      targetLabel='<div class="dc-target" style="color:var(--muted)">meta '+fmt(myTarget)+'</div>';
+      // Linha 2: meta ajustada pela semana (só se diferente)
+      if(hasDiff){
+        var adjColor=slotDiff>0?'var(--red)':'var(--green)';
+        targetLabel+='<div class="dc-target" style="color:'+adjColor+';font-size:0.67rem">ajust. '+fmt(slotTarget)+(slotDiff>0?' ▲':' ▼')+'</div>';
+      }
     } else {
       // Dias passados: exibe meta ajustada (reduzida) em amarelo se diferente da base original
       var changed=Math.abs(adjustedBase-s.baseTarget)>0.05;
