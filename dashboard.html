@@ -419,12 +419,20 @@ function parseProdutividade(rows){
         res.dailyData.push({date:dk(date),feriado:feriado,isWeekend:isWeekend,metaDiaria:metaDiaria,pontuacao:pontuacao});
       } else if(id){
         // Linhas de abatimento/dedução avulsas (ex: "Abatimentos mês anterior(3o decêndio)")
-        // Têm texto em vez de ID numérico; o valor fica na coluna de dedução (B).
+        // Têm texto em vez de ID numérico; o valor pode estar em qualquer coluna numérica.
         var rowLow=id.toLowerCase();
         var isDeducRow=(rowLow.indexOf('abat')>=0||rowLow.indexOf('dedu')>=0);
         if(isDeducRow){
+          // Tenta iDeducao primeiro; se zero, varre a linha em busca do primeiro valor positivo
           var dedVal=num(r[iDeducao]);
+          if(!(dedVal>0)){
+            for(var c2=1;c2<r.length;c2++){
+              var v2=num(r[c2]);
+              if(v2>0){dedVal=v2;break;}
+            }
+          }
           if(dedVal>0){res.deducoes+=dedVal;res.metaLiquida-=dedVal;}
+        }
         }
       }
     }
