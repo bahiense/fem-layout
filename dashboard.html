@@ -1071,12 +1071,13 @@ function renderMonthSummary(today,cfg,abonos){
   });
 
   var metaLiq=(appState.metaLiquida||0);
-  // Abonos reduzem a meta do mês (pontos isentos, homologados no mês seguinte)
+  // Abonos contam como pontos JÁ FEITOS (isentos, homologados no mês seguinte).
+  // A meta permanece no valor do SGP; o abono entra no acumulado.
   var totalAbono=0;
   Object.keys(abonos||{}).forEach(function(k){totalAbono+=(abonos[k].points||0);});
-  var metaEfetiva=Math.max(0,metaLiq-totalAbono);
-  var restante=Math.max(0,metaEfetiva-acum);
-  var pct=metaEfetiva>0?(acum/metaEfetiva*100):0;
+  var acumReal=acum+totalAbono;
+  var restante=Math.max(0,metaLiq-acumReal);
+  var pct=metaLiq>0?(acumReal/metaLiq*100):0;
 
   // Média necessária proporcional: respeita ratio dia-útil/fds
   var totalWeight=futWeekdays*cfg.weekMetaDia+futWeekends*cfg.weekMetaFds;
@@ -1092,8 +1093,8 @@ function renderMonthSummary(today,cfg,abonos){
   }
 
   var html='';
-  html+=msCard('Acumulado',fmt(acum),fmt(pct)+'% da meta',col);
-  html+=msCard('Meta do Mês',fmt(metaEfetiva),totalAbono>0.01?'SGP '+fmt(metaLiq)+' − '+fmt(totalAbono)+' abono':'meta líquida do SGP','var(--blue)');
+  html+=msCard('Acumulado',fmt(acumReal),(totalAbono>0.01?fmt(acum)+' SGP + '+fmt(totalAbono)+' abono · ':'')+fmt(pct)+'% da meta',col);
+  html+=msCard('Meta do Mês',fmt(metaLiq),'meta líquida do SGP','var(--blue)');
   html+=msCard('Falta',restante<=0?'✓ Meta!':fmt(restante),(futWeekdays+futWeekends)+' dias restantes',restante<=0?'var(--green)':'var(--red)');
   html+=msCard('Média/dia útil',restante<=0?'✓':fmt(necDia),'Sab/Dom: '+fmt(necFds)+'/dia',colNec);
   document.getElementById('month-strip').innerHTML=html;
@@ -1101,7 +1102,7 @@ function renderMonthSummary(today,cfg,abonos){
   var fillC=pct>=100?'var(--green)':pct>=60?'var(--yellow)':'var(--red)';
   document.getElementById('progress-section').innerHTML=
     '<div class="progress-wrap">'+
-    '<div class="progress-info"><span><strong>'+fmt(acum)+'</strong> de <strong>'+fmt(metaEfetiva)+'</strong> pts'+(totalAbono>0.01?' <span style="color:var(--purple);font-size:0.8rem">(−'+fmt(totalAbono)+' abono)</span>':'')+'</span><span style="font-weight:700;color:'+fillC+'">'+fmt(pct)+'%</span></div>'+
+    '<div class="progress-info"><span><strong>'+fmt(acumReal)+'</strong> de <strong>'+fmt(metaLiq)+'</strong> pts'+(totalAbono>0.01?' <span style="color:var(--purple);font-size:0.8rem">(+'+fmt(totalAbono)+' abono)</span>':'')+'</span><span style="font-weight:700;color:'+fillC+'">'+fmt(pct)+'%</span></div>'+
     '<div class="progress-bar"><div class="progress-fill" style="width:'+Math.min(pct,100)+'%;background:'+fillC+'"></div></div>'+
     '</div>';
 
@@ -1114,10 +1115,10 @@ function renderProjection(today,cfg,abonos){
   var daily=appState.dailyData;
   var pastPts=0,pastDias=0;
   var futWeekdays=0,futWeekends=0;
-  // Abonos reduzem a meta do mês (mesma regra do resumo)
+  // Abonos contam como pontos JÁ FEITOS; meta fica no valor do SGP
   var totalAbono=0;
   Object.keys(abonos||{}).forEach(function(k){totalAbono+=(abonos[k].points||0);});
-  var metaLiq=Math.max(0,(appState.metaLiquida||0)-totalAbono);
+  var metaLiq=(appState.metaLiquida||0);
 
   daily.forEach(function(d){
     var date=parseDate(d.date);
@@ -1128,6 +1129,8 @@ function renderProjection(today,cfg,abonos){
       if(isWknd) futWeekends++; else futWeekdays++;
     }
   });
+  // Pontos já garantidos = produção real + abonos
+  pastPts+=totalAbono;
 
   var futureDias=futWeekdays+futWeekends;
   // Projeção = pontos já feitos + meta CONFIGURADA aplicada a cada dia restante.
