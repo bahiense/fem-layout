@@ -636,12 +636,10 @@ function renderWeekHero(week,today,cfg,abonos){
   // Feriado desconta o baseTarget do dia da meta semanal.
   // Abono desconta pelo VALOR do abono (não pelo baseTarget) — reduz a obrigação pelo que será creditado.
   var exemptQuota=0;
-  var totalWorkDays=0;
   slots.forEach(function(s){
     var hasAbono=!!(abonos[s.key]);
     if(s.isFeriado){exemptQuota+=s.baseTarget;}
     else if(hasAbono){exemptQuota+=(abonos[s.key].points||0);}
-    else{totalWorkDays++;}
   });
   var effectiveWeekTarget=Math.max(0,weekTarget-exemptQuota);
   var effectiveWeekTargetBase=effectiveWeekTarget;
@@ -825,8 +823,6 @@ function renderHojeCard(curWeek,today,cfg,abonos){
 
   // pastPts para redistribuição: effectivePts (pontuacao + abono) de todos os dias passados
   var pastPts=0;
-  var remainingCount=0;
-  var totalWorkCount=0;
   for(var i=0;i<7;i++){
     var d=new Date(monday);d.setDate(monday.getDate()+i);
     var key=dk(d);
@@ -835,8 +831,6 @@ function renderHojeCard(curWeek,today,cfg,abonos){
     var hasAbono=!!(abonos[key]);
     var isExempt=isFeriado||hasAbono;
     if(d<today&&!isExempt) pastPts+=rec?rec.pontuacao:0;
-    if(!isExempt) totalWorkCount++;
-    if(d>=today&&!isExempt) remainingCount++;
   }
 
   // Redistribuição proporcional: calcula peso de cada dia restante
@@ -861,9 +855,20 @@ function renderHojeCard(curWeek,today,cfg,abonos){
   var isFeriado=todayRec&&todayRec.feriado;
   if(isFeriado){el.innerHTML='';return;}
 
+  // Se hoje tem abono, o dia é ISENTO: a meta da semana já foi reduzida.
+  // Não há "necessário hoje" — evita contar o abono duas vezes.
   var todayAbono=(abonos[todayKey]||{}).points||0;
+  if(todayAbono>0){
+    el.innerHTML='<div class="hoje-card"><div class="hoje-main">'+
+      '<div class="hoje-label">📍 Hoje</div>'+
+      '<div class="hoje-value" style="color:var(--purple)">Isento</div>'+
+      '<div class="hoje-sub">abono de '+fmt(todayAbono)+' pts — meta da semana já reduzida</div>'+
+      '</div></div>';
+    return;
+  }
+
   var todayPts=todayRec?todayRec.pontuacao:0;
-  var todayEff=todayPts+todayAbono;
+  var todayEff=todayPts;
   var needToday=Math.max(0,adjustedTarget-todayEff);
 
   var col=needToday<=0?'var(--green)':needToday<=adjustedTarget*0.5?'var(--yellow)':'var(--red)';
@@ -877,7 +882,6 @@ function renderHojeCard(curWeek,today,cfg,abonos){
   html+='<div class="hoje-divider"></div>';
   html+='<div class="hoje-extra">';
   html+='Feito hoje: <strong style="color:var(--text)">'+fmt(todayEff)+'</strong> pts<br>';
-  if(todayAbono>0)html+='<span style="color:var(--purple)">(+'+fmt(todayAbono)+' ab.)</span><br>';
   html+='Minha meta: <strong style="color:var(--muted)">'+fmt(adjustedBase2)+'</strong>';
   if(Math.abs(adjustedTarget-adjustedBase2)>0.05) html+=' → sem. <strong style="color:var(--yellow)">'+fmt(adjustedTarget)+'</strong>';
   html+='</div>';
@@ -922,7 +926,6 @@ function renderSparkline(weeks,cfg,abonos,curMondayKey){
   });
   // target line note
   html+='</div>';
-  var tPct=maxPts>0?(cfg.weekMetaSemanal/maxPts*100):0;
   html+='<div style="font-size:0.68rem;color:var(--muted);margin-top:6px">◆ Semana atual &nbsp;·&nbsp; Meta: '+fmt(cfg.weekMetaSemanal)+' pts</div>';
   html+='</div>';
   el.innerHTML=html;
@@ -1113,17 +1116,18 @@ function renderMonthSummary(today,cfg,abonos){
 // ==================== PROJEÇÃO ====================
 function renderProjection(today,cfg,abonos){
   var daily=appState.dailyData;
-  var pastPts=0,pastDias=0;
+  var pastPts=0;
   var futWeekdays=0,futWeekends=0;
   // Abonos contam como pontos JÁ FEITOS; meta fica no valor do SGP
   var totalAbono=0;
   Object.keys(abonos||{}).forEach(function(k){totalAbono+=(abonos[k].points||0);});
   var metaLiq=(appState.metaLiquida||0);
 
+  // Acumula igual ao Resumo do Mês: toda pontuacao até hoje (inclui bônus de feriado)
   daily.forEach(function(d){
     var date=parseDate(d.date);
     if(date<=today){
-      if(!d.feriado||d.pontuacao>0){pastPts+=d.pontuacao;pastDias++;}
+      pastPts+=d.pontuacao;
     } else if(!d.feriado){
       var isWknd=(date.getDay()===0||date.getDay()===6);
       if(isWknd) futWeekends++; else futWeekdays++;
